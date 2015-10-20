@@ -1,0 +1,55 @@
+---------------------------------------------------------------------
+Version 1.0.5 (06edbce)
+---------------------------------------------------------------------
+Server changes:
+	- Update to DIAL specificiation 1.7.2
+	- CORE compliance security patch
+	- Added CORS compliance test scripts
+
+---------------------------------------------------------------------
+Version 1.0.4 (1673785)
+---------------------------------------------------------------------
+Server changes:
+	- Update to DIAL specificiation 1.7
+	- Catch SIGTERM so that we don't self terminate.
+
+---------------------------------------------------------------------
+Version 1.0.2 (1673785)
+---------------------------------------------------------------------
+Server changes:
+    - Fix an application state bug when the application is launched
+      without using DIAL.
+    - Remove unnecessary functionality from Mongoose.
+    - Use constant values for DIAL port.
+    - Propery reap child processes.
+
+Client (test tool) changes:
+   - None
+
+---------------------------------------------------------------------
+Version 1.0.1 (1601607)
+---------------------------------------------------------------------
+General Changes: 
+    - Simplified directory structure. 
+    - Version.txt changed to Version.h.
+    - moved main Makefile into src dir.
+
+Server changes: 
+    - Server configuration options moved into dial_options.h.
+    - Added logic to walk/proc to see if the named app (eg Netflix) 
+      is running before attempting to start/kill the app.  
+    - Improved payload handling: 
+        - Explicitly define payload size. 
+        - Added logic to check validity of payload, and send HTTP 400
+          "bad request" responses to requests with improper payloads.
+        - Added URL encoding for payloads. 
+    - Added logic to compare launch payload on subsequent launch 
+      requests. 
+
+Client (test tool) changes: 
+    - small change to printed format of server names. 
+
+---------------------------------------------------------------------
+Version 1.0 (1416215)
+---------------------------------------------------------------------
+Initial release.

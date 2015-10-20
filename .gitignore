@@ -1,0 +1,4 @@
+*.o
+client/dialclient
+server/dialserver
+server/tests/run_tests

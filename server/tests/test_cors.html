@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>DIAL Security Test CORS</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+        <script>
+            $(document).ready(function(){
+
+            var makePost=function(app){
+              console.log("make dial post...");
+              var ip = $("#ipAddress").val();
+              var port = $("#dialPort").val();
+              var urlStr = "http://"+ip+":"+port+"/apps/"+app;
+              console.log(urlStr);
+              $("#status").text("posted to "+urlStr);
+              $.ajax({
+                type: "POST",
+                url: urlStr,
+                data: "v=QH2-TGUlwu4",
+                dataType: "text/plain; charset=\"utf-8\""
+              });
+            };
+
+            $( "#testNetflix" ).click(function(){
+                console.log("testing Netflix");
+                makePost("Netflix");
+            });
+
+            $( "#testYoutube" ).click(function(){
+                console.log("testing Youtube");            
+                makePost("Youtube");
+            });
+
+            });
+        </script>
+    </head>
+    <body>
+        <input id="ipAddress" type="text" name="ip" value="192.168.1.100">
+        <input id="dialPort" type="text" name="port" value="8060">
+        <p>
+          <button id="testNetflix">Test Netflix</button>
+          <button id="testYoutube">Test Youtube</button>
+        </p>
+        <p>
+          <div id="status"></div>
+        </p>
+    </body>
+</html>
+
+

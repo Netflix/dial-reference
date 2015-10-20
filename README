@@ -1,0 +1,78 @@
+--------------------------------------------------------------------------------
+Building the DIAL server
+--------------------------------------------------------------------------------
+1) Define the TARGET environment variable to point to the CC compiler prefix
+   for your target platform. 
+
+
+2) Run make, passing in your TARGET value. 
+
+   For example:  
+   TARGET=/usr/local/i686-DIAL-EXAMPLE/bin/i686-DIAL-EXAMPLE make
+
+--------------------------------------------------------------------------------
+Running the DIAL server
+--------------------------------------------------------------------------------
+The DIAL server should be started as a service, after the platform's networking
+has been initialized, and it should remain running at all times (a daemon 
+process in the system).
+
+
+--------------------------------------------------------------------------------
+Building the DIAL client
+--------------------------------------------------------------------------------
+The DIAL client is a standalone C++ console application you can use to test 
+a running DIAL server implementation on your device. Unlike the server, which
+is built for, and meant to run on your device, the client is meant to run on 
+your desktop (development) machine. 
+
+The DIAL client uses CURL to send HTTP REST commands to the DIAL server, so to
+build the client, you need to ensure that the CURL dependencies are 
+defined properly. 
+
+Alternatively, you can build against a different, current version of libcurl. 
+Adjust the INCLUDES and LDFLAGS definitions to point to your actual libcurl
+header and library locations. In most cases, you can omit the TARGET define. 
+
+Note: the -rpath argument passed to LDFLAGS specifies the libcurl location
+to the runtime linker. 
+
+--------------------------------------------------------------------------------
+Running the DIAL client in interactive (menu) mode
+--------------------------------------------------------------------------------
+1) The DIAL client application must be running in the same subnet as the 
+   DIAL server.
+
+2) Start the client: ./dialclient (or ./dialclient -m)  
+   The on-screen menu will list all available actions.
+
+--------------------------------------------------------------------------------
+Running the DIAL client in conformance test (non-interactive) mode
+--------------------------------------------------------------------------------
+1) The DIAL client application must be running in the same subnet as the 
+   DIAL server.
+
+2) Start the client: 
+   ./dialclient -i [input-file] [-o output-file] [-a server-IP-addr]   
+
+   In script-driven mode, the client reads in an input-file, executes the
+   instructions in the input-file, and generates a 
+   report. The default file locations (which can be overridden) are: 
+      ./dialclient_input.txt 
+      ./report.html
+
+--------------------------------------------------------------------------------
+DIAL client Usage
+--------------------------------------------------------------------------------
+When running the DIAL client, you have the following options
+usage: dialclient <option>
+
+Option Parameter          Description
+ -h     none               Usage menu
+ -m     none               Use menu
+ -o     filename           Reporter output file (./report.html)
+ -i     filename           Input File (./dialclient_input.txt)
+ -a     ip_address         IP addr of DIAL server (used for conformance testing)
+
+If you do not provide an ip_address and multiple servers are discovered, the 
+client will prompt you to select a server.
