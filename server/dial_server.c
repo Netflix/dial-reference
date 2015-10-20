@@ -37,6 +37,7 @@
 
 #include "mongoose.h"
 #include "url_lib.h"
+#include "LinuxInterfaces.h"
 
 // TODO: Partners should define this port
 #define DIAL_PORT (56789)
@@ -213,6 +214,7 @@ static void handle_app_status(struct mg_connection *conn,
         free(encoded_key);
         free(encoded_value);
     }
+
     app->state = app->callbacks.status_cb(ds, app_name, app->run_id, &canStop,
                                           app->callback_data);
     mg_printf(
@@ -231,7 +233,7 @@ static void handle_app_status(struct mg_connection *conn,
             "%s"
             "\n  </additionalData>\n"
             "</service>\r\n",
-            origin_header,
+            origin_header,            
             DIAL_VERSION,
             app->name,
             canStop ? "true" : "false",
@@ -510,7 +512,6 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
                     free(app_name);
                     return ret;
                 }
-
                 int use_payload =
                     strcmp(request_info->request_method, "POST") ? 0 : 1;
                 handle_dial_data(conn, request_info, app_name, origin_header,

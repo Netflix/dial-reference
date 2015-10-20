@@ -50,11 +50,13 @@ public:
      * empty string to find any server
      *
      */
-    DialServer( string location, string appsUrl, string dd_xml ) : 
+    DialServer( string location, string appsUrl, string dd_xml, string macAddr, int wakeUpTimeout) : 
     m_location(location),
     m_appsUrl(appsUrl),
     found(true),
-    m_ddxml(dd_xml) 
+    m_ddxml(dd_xml),
+    m_macAddr(macAddr),
+    m_wakeUpTimeout(wakeUpTimeout)
     {}
 
     ~DialServer() { ATRACE("%s\n", __FUNCTION__); }
@@ -93,6 +95,20 @@ public:
      * @return true if successful, false otherwise
      */
     bool getUuid( string& uuid );
+
+    /**
+     * Get the dial server mac address
+     *
+     * @return mac address if avaliable, '' if not.
+     */    
+    string getMacAddress();
+
+    /**
+     * Get the wake on lan timeout in seconds
+     *
+     * @return timeout value if avaliable, zero if not.
+     */
+    int  getWakeOnLanTimeout();
 
     /**
      * Launch a DIAL application
@@ -176,6 +192,9 @@ private:
     bool found;
     string m_ddxml; // information about the device
     string m_stopEndPoint;
+    string m_macAddr;
+    int    m_wakeUpTimeout;
+
 };
 
 #endif // DIALSERVER_H

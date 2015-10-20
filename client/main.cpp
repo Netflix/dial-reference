@@ -31,6 +31,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 
 using namespace std;
 
@@ -51,12 +56,15 @@ static void printServerList( vector<DialServer*> list )
     vector<DialServer*>::iterator it;
     for( i = 0, it = list.begin(); it < list.end(); it++, i++ )
     {
-        string uuid, name;
+        string uuid, name, macAddr;
+        int wolTimeOut;
         (*it)->getFriendlyName( name );
         (*it)->getUuid( uuid );
-        printf("%Zu: Server IP[%s] UUID[%s] FriendlyName[%s] \n", 
-            i+1, (*it)->getIpAddress().c_str(),
-            uuid.c_str(), name.c_str() );
+        macAddr    =(*it)->getMacAddress();
+        wolTimeOut =(*it)->getWakeOnLanTimeout();
+        printf("%Zu: Server IP[%s] UUID[%s] FriendlyName[%s] MacAddress[%s] WakeOnLanTimeout[%d]\n", 
+               i+1, (*it)->getIpAddress().c_str(),
+               uuid.c_str(), name.c_str(), macAddr.c_str(), wolTimeOut);
     }
 }
 
@@ -64,22 +72,19 @@ static DialServer* getServerFromUser( vector<DialServer*> list )
 {
     DialServer* pServer;
     // show a list to the user
-    if( list.size() > 1 )
-    {
-        char buf[80] = {0,};
-        vector<DialServer*>::iterator it;
+    char buf[80] = {0,};
+    vector<DialServer*>::iterator it;
 
-        printf("Found Multiple servers\n");
-        printServerList(list);
-        printf("Enter server: ");
-        scanf("%s", buf);
-        unsigned int server = atoi(buf);
-        assert( server > 0 && server <= list.size() );
+    printf("Found Multiple servers\n");
+    printf("0: Rescan and list DIAL servers\n");
+    printServerList(list);
+    printf("Enter server: ");
+    scanf("%s", buf);
+    unsigned int server = atoi(buf);
+    if( server > 0 && server <= list.size()){
         pServer = list[server-1];
-    }
-    else
-    {
-        pServer = list.front();
+    }else{
+        pServer = NULL;
     }
     return pServer;
 }
@@ -141,85 +146,140 @@ static void runConformance()
     }
 }
 
+static void sendMagic(string macAddr)
+{
+    unsigned char tosend[102];
+    unsigned char mac[6];
+
+    /** first 6 bytes of 255 **/
+    for(int i = 0; i < 6; i++) {
+        tosend[i] = 0xFF;
+    }
+
+    /** store mac address **/
+    printf("sending magic packet to: ");
+    for (int i=0; i<6; i++){
+        mac[i]=(unsigned char)(strtoul(macAddr.substr(i*3, 2).c_str(), NULL, 16));
+        printf("%02x:", mac[i]);
+    }
+    printf("\n");
+
+    /** append it 16 times to packet **/
+    for(int i = 1; i <= 16; i++) {
+        memcpy(&tosend[i * 6], &mac, 6 * sizeof(unsigned char));
+    }
+
+    int udpSocket;
+    struct sockaddr_in udpClient, udpServer;
+    int broadcast = 1;
+
+    udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
+
+    /** you need to set this so you can broadcast **/
+    if (setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof broadcast) == -1) {
+        perror("setsockopt (SO_BROADCAST)");
+        exit(1);
+    }
+    udpClient.sin_family = AF_INET;
+    udpClient.sin_addr.s_addr = INADDR_ANY;
+    udpClient.sin_port = 0;
+
+    bind(udpSocket, (struct sockaddr*)&udpClient, sizeof(udpClient));
+
+    /** set server end point (the broadcast addres)**/
+    udpServer.sin_family = AF_INET;
+    udpServer.sin_addr.s_addr = inet_addr("255.255.255.255");
+    udpServer.sin_port = htons(9);
+
+    /** send the packet **/
+    sendto(udpSocket, &tosend, sizeof(unsigned char) * 102, 0, (struct sockaddr*)&udpServer, sizeof(udpServer));
+}
+
+
 int handleUser(DialDiscovery *pDial) {
-    int processInput = 1;
+    int processInputOuter = 1;        
     char buf[80];
     vector<DialServer*> list;
-
-    pDial->getServerList(list);
-    if( list.size() == 0 )
-    {
-        printf("No servers available\n");
-        return 1;
-    }
-    DialServer* pServer = getServerFromUser( list );
-
-    while(processInput)
-    {
-        string responseHeaders, responseBody, payload;
-        string netflix = "Netflix";
-        string youtube = "YouTube";
-
-        memset(buf, 0, 80);
-        printf("0. List DIAL servers\n");
-        printf("1. Launch Netflix\n");
-        printf("2. Kill Netflix\n");
-        printf("3. Netflix status\n");
-        printf("4. Launch YouTube\n");
-        printf("5. Kill YouTube\n");
-        printf("6. YouTube status\n");
-        printf("7. Run conformance tests\n");
-        printf("8. QUIT\n");
-        printf("Command (0:1:2:3:4:5:6:7:8): ");
-        scanf("%s", buf);
-        switch( atoi(buf) )
-        {
-            case 0:
-            {
-                printf("\n\n******** %Zu servers found ********\n\n", list.size());
-                for( unsigned int i = 0; i < list.size(); i++ )
-                {
-                    string name;
-                    list[i]->getFriendlyName(name);
-                    printf("Server %Zu: %s\n", i+1, name.c_str());
-                }
-                printf("\n*********************************\n\n");
-            }break;
-            case 1:
-                printf("Launch Netflix\n");
-                pServer->launchApplication( netflix, payload, responseHeaders, responseBody );
-                break;
-            case 2:
-                printf("Kill Netflix\n");
-                pServer->stopApplication( netflix, responseHeaders );
-                break;
-            case 3:
-                printf("Netflix Status: \n");
-                pServer->getStatus( netflix, responseHeaders, responseBody );
-                printf("RESPONSE: \n%s\n", responseBody.c_str());
-                break;
-            case 4:
-                printf("Launch YouTube\n");
-                pServer->launchApplication( youtube, payload, responseHeaders, responseBody );
-                break;
-            case 5:
-                printf("Kill YouTube\n");
-                pServer->stopApplication( youtube, responseHeaders );
-                break;
-            case 6:
-                printf("YouTube Status: \n");
-                pServer->getStatus( youtube, responseHeaders, responseBody );
-                break;
-            case 7:
-                runConformance();
-                break;
-            case 8:
-                processInput = 0;
-                break;
-            default:
-                printf("Invalid, try again\n");
+    
+    while (processInputOuter){
+        pDial->getServerList(list);
+        if( list.size() == 0 ){
+            printf("No servers available\n");
+            return 1;
         }
-    } 
+        DialServer* pServer = getServerFromUser( list );
+        if (pServer==NULL){
+            pDial->send_mcast();
+            continue;
+        }
+
+        int processInput = 1;        
+        while(processInput){
+            string responseHeaders, responseBody, payload;
+            string netflix = "Netflix";
+            string youtube = "YouTube";
+            
+            memset(buf, 0, 80);
+            printf("0. Rescan and list DIAL servers\n");
+            printf("1. Launch Netflix\n");
+            printf("2. Kill Netflix\n");
+            printf("3. Netflix status\n");
+            printf("4. Launch YouTube\n");
+            printf("5. Kill YouTube\n");
+            printf("6. YouTube status\n");
+            printf("7. Run conformance tests\n");
+            printf("8. Wake up on lan/wlan\n");
+            printf("9. QUIT\n");
+            printf("Command (0:1:2:3:4:5:6:7:8:9): ");
+            scanf("%s", buf);
+            switch( atoi(buf) )
+                {
+                case 0:
+                    {
+                        pDial->send_mcast();
+                        processInput=0;
+                    }break;
+                case 1:
+                    printf("Launch Netflix\n");
+                    pServer->launchApplication( netflix, payload, responseHeaders, responseBody );
+                    break;
+                case 2:
+                    printf("Kill Netflix\n");
+                    pServer->stopApplication( netflix, responseHeaders );
+                    break;
+                case 3:
+                    printf("Netflix Status: \n");
+                    pServer->getStatus( netflix, responseHeaders, responseBody );
+                    printf("RESPONSE: \n%s\n", responseBody.c_str());
+                    break;
+                case 4:
+                    printf("Launch YouTube\n");
+                    pServer->launchApplication( youtube, payload, responseHeaders, responseBody );
+                    break;
+                case 5:
+                    printf("Kill YouTube\n");
+                    pServer->stopApplication( youtube, responseHeaders );
+                    break;
+                case 6:
+                    printf("YouTube Status: \n");
+                    pServer->getStatus( youtube, responseHeaders, responseBody );
+                    break;
+                case 7:
+                    runConformance();
+                    break;
+                case 8:
+                    printf("Sending the magic packet\n");
+                    sendMagic(pServer->getMacAddress());
+                    break;
+                case 9:
+                    processInput = 0;
+                    processInputOuter = 0;
+                    break;
+                default:
+                    printf("Invalid, try again\n");
+                }
+        } 
+    }
     return 0;
 }
 

@@ -39,7 +39,7 @@ typedef enum {
 /*
  * DIAL version that is reported via in the status response.
  */
-#define DIAL_VERSION ("\"1.7\"")
+#define DIAL_VERSION ("\"2.0\"")
 
 /*
  * The maximum DIAL payload accepted per the DIAL 1.6.1 specification.

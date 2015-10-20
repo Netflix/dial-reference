@@ -40,6 +40,7 @@
 #include <vector>
 #include "DialDiscovery.h"
 #include <assert.h>
+#include <ctime>
 
 #define SSDP_TIMEOUT 30
 #define SSDP_RESPONSE_TIMEOUT 3
@@ -97,6 +98,45 @@ static string getLocation(char *pResponse)
     return retUrl;
 }
 
+static string getMac(char *pResponse)
+{
+    string response(pResponse);
+    string mac("");
+    size_t index = response.find("WAKEUP:");
+
+    if (index==string::npos){
+        return mac;
+    }else{
+        size_t start = response.find("MAC=", index);
+        if (start==string::npos) return mac;
+        start+=4;
+        size_t end = response.find(";", start);
+        if (end==string::npos) return mac;
+        mac = response.substr(start, end-start);
+        return mac;
+    }
+}
+
+static int getTimeout(char *pResponse)
+{
+    string response(pResponse);
+    int timeOut=0;
+    string timeOutStr;
+    size_t index = response.find("WAKEUP:");
+    if (index==string::npos){
+        return timeOut;
+    }else{
+        size_t start = response.find("Timeout=", index);
+        if (start==string::npos) return timeOut;
+        start+=8;
+        size_t end = response.find("\r\n", start);
+        if (end==string::npos) return timeOut;
+        timeOutStr = response.substr(start, end-start);
+        timeOut = (int)(strtol(timeOutStr.c_str(), NULL, 10));
+        return timeOut;
+    }
+}
+
 static size_t header_cb(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
     if ((size * nmemb) != 0) {
@@ -132,7 +172,6 @@ static void getServerInfo( const string &server, string& appsUrl, string& ddxml 
 {
     CURL *curl;
     CURLcode res = CURLE_OK;
-
     if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
         fprintf(stderr, "curl_global_init() failed\n");
         return; 
@@ -146,6 +185,7 @@ static void getServerInfo( const string &server, string& appsUrl, string& ddxml 
 
     ATRACE("Sending ##%s##\n", server.c_str());
     curl_easy_setopt(curl, CURLOPT_URL, server.c_str());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 1);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, &appsUrl);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, receiveData);
@@ -157,7 +197,7 @@ static void getServerInfo( const string &server, string& appsUrl, string& ddxml 
     //curl_global_cleanup();
 }
 
-void DialDiscovery::updateServerList(string& server)
+void DialDiscovery::updateServerList(string& server, string mac, int timeOut)
 {
     ServerMap::const_iterator it;
     it = mServerMap.find(server);
@@ -165,7 +205,7 @@ void DialDiscovery::updateServerList(string& server)
         // not found, add it
         string appsUrl, ddxml;
         getServerInfo(server, appsUrl, ddxml);
-        mServerMap[server] = new DialServer(server, appsUrl, ddxml);
+        mServerMap[server] = new DialServer(server, appsUrl, ddxml, mac, timeOut);
     } else {
         // just mark that we found it
         (*it).second->setFound(true);
@@ -181,9 +221,12 @@ void DialDiscovery::processServer(char *pResponse)
         // parse for LOCATION header
         server = getLocation(pResponse);
         ATRACE("FOUND server: %s\n", server.c_str());
-    
+
+        string mac=getMac(pResponse);
+        int timeOut=getTimeout(pResponse);
+
         // save the appURL in the server
-        updateServerList(server);
+        updateServerList(server, mac, timeOut);
 #ifndef DEBUG
     }
 #else
@@ -196,17 +239,39 @@ void DialDiscovery::processServer(char *pResponse)
 void *DialDiscovery::receiveResponses(void *p) 
 {
     search_conn *pConn = (search_conn*)p;
+
+    fd_set readfds;
+    struct timeval tv;
+    int selectRt;
+    // clear the set ahead of time
+    FD_ZERO(&readfds);
+    // add our descriptors to the set
+    FD_SET(pConn->sock, &readfds);
+    // wait until either socket has data ready to be recv()d (timeout 1.5 secs)
+    tv.tv_sec = 1;
+    tv.tv_usec = 500000;
+    
     int bytes;
     char buf[4096] = {0,};
-    while (1) {
-        if (-1 == (bytes = recvfrom(pConn->sock, buf, sizeof(buf) - 1, 0,
-                                  (struct sockaddr *)&pConn->saddr, &pConn->addrlen))) {
-            perror("recvfrom");
+    time_t start=std::time(NULL);
+    while (std::time(NULL)-start<RESPONSE_TIMEOUT) {
+        //        printf("beat %ld %ld %ld\n", std::time(NULL), start, std::time(NULL)-start);
+        selectRt=select(pConn->sock+1, &readfds, NULL, NULL, &tv);
+        if (selectRt==-1){
+            perror("select"); // error occurred in select()
             break;
+        }else if (selectRt == 0){
+            //            printf("Timeout occurred!  No data after 1.5 seconds.\n");
+        }else{
+            if (-1 == (bytes = recvfrom(pConn->sock, buf, sizeof(buf) - 1, 0,
+                                        (struct sockaddr *)&pConn->saddr, &pConn->addrlen))) {
+                perror("recvfrom");
+                break;
+            }
+            buf[bytes] = 0;
+            ATRACE("Received [%s:%d] %s\n", __FUNCTION__, __LINE__, buf);
+            DialDiscovery::instance()->processServer(buf);
         }
-        buf[bytes] = 0;
-        ATRACE("Received [%s:%d] %s\n", __FUNCTION__, __LINE__, buf);
-        DialDiscovery::instance()->processServer(buf);
     }
     return 0;
 }
@@ -244,17 +309,17 @@ void DialDiscovery::resetDiscovery(void)
     }
 }
 
-void * DialDiscovery::send_mcast(void *p) 
+void *DialDiscovery::send_mcast() 
 {
     int one = 1, my_sock;
     socklen_t addrlen;
     //struct ip_mreq mreq;
     char send_buf[strlen((char*)ssdp_msearch) + INET_ADDRSTRLEN + 256] = {0,};
     int send_size;
-    pthread_attr_t attr;
     search_conn connection;
 
-    //    send_size = snprintf(send_buf, sizeof(send_buf), ssdp_msearch, ip_addr, my_port);
+    printf("Sending mcast for discovery.  Please wait for %d seconds for the response.\n", RESPONSE_TIMEOUT);
+
     send_size = snprintf(send_buf, sizeof(send_buf), ssdp_msearch);
     ATRACE("[%s:%d] %s\n", __FUNCTION__, __LINE__, send_buf);
 
@@ -270,45 +335,38 @@ void * DialDiscovery::send_mcast(void *p)
     saddr.sin_addr.s_addr = inet_addr("239.255.255.250");
     saddr.sin_port = htons(1900);
 
-    while (1) {
-        addrlen = sizeof(saddr);
-        ATRACE("Sending SSDP M-SEARCH to %s:%d\n",
-             inet_ntoa(saddr.sin_addr), ntohs(saddr.sin_port));
-        if (-1 == sendto(my_sock, send_buf, send_size, 0, (struct sockaddr *)&saddr, addrlen)) {
-          perror("sendto");
-            continue;
-        }
-
-        // set all servers to not found
-        DialDiscovery::instance()->resetDiscovery();
-
-        // spawn a response thread
-        connection.saddr = saddr;
-        connection.sock = my_sock;
-        connection.addrlen = addrlen;
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-        pthread_create(&DialDiscovery::instance()->_responseThread, &attr, DialDiscovery::receiveResponses, &connection);
-
-        // sleep SSDP_RESPONSE_TIMEOUT seconds to allow clients to response
-        sleep(SSDP_RESPONSE_TIMEOUT);
-        DialDiscovery::instance()->cleanServerList();
-
-        sleep(SSDP_TIMEOUT-SSDP_RESPONSE_TIMEOUT);
-        pthread_cancel(DialDiscovery::instance()->_responseThread);
+    addrlen = sizeof(saddr);
+    ATRACE("Sending SSDP M-SEARCH to %s:%d\n",
+           inet_ntoa(saddr.sin_addr), ntohs(saddr.sin_port));
+    if (-1 == sendto(my_sock, send_buf, send_size, 0, (struct sockaddr *)&saddr, addrlen)) {
+        perror("sendto");
+        return 0;
     }
+
+    // set all servers to not found
+    DialDiscovery::instance()->resetDiscovery();
+
+    connection.saddr = saddr;
+    connection.sock = my_sock;
+    connection.addrlen = addrlen;
+
+    receiveResponses(&connection);
+
+    // // sleep SSDP_RESPONSE_TIMEOUT seconds to allow clients to response
+    // sleep(SSDP_RESPONSE_TIMEOUT);
+    DialDiscovery::instance()->cleanServerList();
+
+    return 0;
 }
 
 void DialDiscovery::init() 
 {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    pthread_create(&_mcastThread, &attr, DialDiscovery::send_mcast, (void*)ssdp_msearch );
+    send_mcast();
 }
 
 void DialDiscovery::getServerList( vector<DialServer*>& list )
 {
+    list.clear();
     for( ServerMap::iterator it = mServerMap.begin(); it != mServerMap.end(); ++it ) {
         list.push_back( it->second );
     }

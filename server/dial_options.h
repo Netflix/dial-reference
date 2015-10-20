@@ -46,6 +46,10 @@
 #define UUID_OPTION_LONG "--uuid-name"
 #define UUID_DESCRIPTION "UUID of the device"
 
+#define WAKE_OPTION "-W"
+#define WAKE_OPTION_LONG "--wake-on-wifi-len"
+#define WAKE_DESCRIPTION "Enable wake on wifi/len.  Value: on/off.  Default (on)"
+
 struct dial_options
 {
     const char * pOption;
@@ -79,6 +83,11 @@ struct dial_options gDialOptions[] =
         UUID_OPTION,
         UUID_OPTION_LONG,
         UUID_DESCRIPTION
+    },
+    {
+        WAKE_OPTION,
+        WAKE_OPTION_LONG,
+        WAKE_DESCRIPTION
     }
 };
 

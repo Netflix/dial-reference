@@ -73,11 +73,11 @@ public:
         const string& friendlyName,
         DialServer &server );
 
+    void *send_mcast();
 private:
     DialDiscovery();
-    void updateServerList(string& server);
+    void updateServerList(string& server, string mac, int timeOut);
     static void *receiveResponses(void *p);
-    static void *send_mcast(void *p);
     void processServer(char *pResponse);
     void cleanServerList();
     void resetDiscovery();
@@ -89,6 +89,7 @@ private:
     ServerMap mServerMap;
 
     static DialDiscovery* sDiscovery;
+    static const int RESPONSE_TIMEOUT = 5;
 };
 
 #endif // DIALDISCOVERY_H

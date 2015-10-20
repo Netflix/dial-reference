@@ -38,6 +38,7 @@
 #include "dial_server.h"
 #include "dial_options.h"
 #include <signal.h>
+#include <stdbool.h>
 
 #define BUFSIZE 256
 
@@ -54,6 +55,7 @@ static char spNetflix[BUFSIZE];
 static char spFriendlyName[BUFSIZE];
 static char spModelName[BUFSIZE];
 static char spUuid[BUFSIZE];
+extern bool wakeOnWifiLan;
 static int gDialPort;
 
 static char *spAppYouTube = "chrome";
@@ -393,26 +395,37 @@ static void processOption( int index, char * pOption )
 {
     switch(index)
     {
-        case 0: // Data path
-            memset( spDataDir, 0, sizeof(spDataDir) );
-            setDataDir( pOption );
-            break;
-        case 1: // Netflix path
-            setValue( pOption, spNetflix );
-            break;
-        case 2: // Friendly name
-            setValue( pOption, spFriendlyName );
-            break;
-        case 3: // Model Name
-            setValue( pOption, spModelName );
-            break;
-        case 4: // UUID
-            setValue( pOption, spUuid );
-            break;
-        default:
-            // Should not get here
-            fprintf( stderr, "Option %d not valid\n", index);
+    case 0: // Data path
+        memset( spDataDir, 0, sizeof(spDataDir) );
+        setDataDir( pOption );
+        break;
+    case 1: // Netflix path
+        setValue( pOption, spNetflix );
+        break;
+    case 2: // Friendly name
+        setValue( pOption, spFriendlyName );
+        break;
+    case 3: // Model Name
+        setValue( pOption, spModelName );
+        break;
+    case 4: // UUID
+        setValue( pOption, spUuid );
+        break;
+    case 5:
+        if (strcmp(pOption, "on")==0){
+            wakeOnWifiLan=true;
+        }else if (strcmp(pOption, "off")==0){
+            wakeOnWifiLan=false;
+        }else{
+            fprintf(stderr, "Option %s is not valid for %s",
+                    pOption, WAKE_OPTION_LONG);
             exit(1);
+        }
+        break;
+    default:
+        // Should not get here
+        fprintf( stderr, "Option %d not valid\n", index);
+        exit(1);
     }
 }
 

@@ -185,6 +185,16 @@ bool DialServer::getUuid( string& uuid )
     return retval;
 }
 
+string DialServer::getMacAddress()
+{
+    return m_macAddr;
+}
+
+int  DialServer::getWakeOnLanTimeout()
+{
+    return m_wakeUpTimeout;
+}
+
 int DialServer::launchApplication(
     string &application,
     string &payload, 
@@ -193,8 +203,8 @@ int DialServer::launchApplication(
 {
     ATRACE("%s: Launch %s\n", __FUNCTION__, application.c_str());
     string appUrl = m_appsUrl;
-    sendCommand( appUrl.append(application), COMMAND_LAUNCH, payload, responseHeaders, responseBody);
-    return 0;
+    int status = sendCommand( appUrl.append(application), COMMAND_LAUNCH, payload, responseHeaders, responseBody);
+    return status;
 }
 
 int DialServer::getStatus(
@@ -205,8 +215,9 @@ int DialServer::getStatus(
     ATRACE("%s: GetStatus %s\n", __FUNCTION__, application.c_str());
     string emptyPayload;
     string appUrl = m_appsUrl;
-    sendCommand( appUrl.append(application), COMMAND_STATUS, emptyPayload, responseHeaders, responseBody );
+    int status = sendCommand( appUrl.append(application), COMMAND_STATUS, emptyPayload, responseHeaders, responseBody );
 
+    if (!status) return 0;
     ATRACE("Body: %s\n", responseBody.c_str());
     unsigned found = responseBody.find("href=");
     if( found != string::npos )
@@ -234,10 +245,10 @@ int DialServer::stopApplication(
     // just call status to update the run endpoint
     getStatus( application, responseHeaders, responseBody );
 
-    sendCommand( 
-            (appUrl.append(application)).append("/"+m_stopEndPoint), 
-            COMMAND_KILL, emptyPayload, responseHeaders, responseBody );
-    return 0;
+    int status = sendCommand( 
+                             (appUrl.append(application)).append("/"+m_stopEndPoint), 
+                             COMMAND_KILL, emptyPayload, responseHeaders, responseBody );   
+    return status;
 }
 
 int DialServer::getHttpResponseHeader( 
