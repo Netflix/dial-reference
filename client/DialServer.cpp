@@ -31,8 +31,10 @@ using namespace std;
 enum DIAL_COMMAND{
     COMMAND_LAUNCH,
     COMMAND_STATUS,
-    COMMAND_KILL
+    COMMAND_KILL,
+    COMMAND_HIDE
 };
+const char* DIAL_COMMAND_STR[] = {"LAUNCH", "STATUS", "KILL", "HIDE"};
 
 static size_t header_cb(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
@@ -78,7 +80,7 @@ int DialServer::sendCommand(
         return 0;
     }
 
-    if (command == COMMAND_LAUNCH) 
+    if (command == COMMAND_LAUNCH || command == COMMAND_HIDE) 
     {
         curl_easy_setopt(curl, CURLOPT_POST, true);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.size());
@@ -94,10 +96,7 @@ int DialServer::sendCommand(
     {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     }
-    ATRACE("Sending %s:%s\n", 
-        command == COMMAND_LAUNCH ? "LAUNCH" :
-            (command == COMMAND_KILL ? "KILL" : "STATUS"),
-        url.c_str());
+    ATRACE("Sending %s:%s\n", DIAL_COMMAND_STR[command], url.c_str());
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
@@ -248,6 +247,24 @@ int DialServer::stopApplication(
     int status = sendCommand( 
                              (appUrl.append(application)).append("/"+m_stopEndPoint), 
                              COMMAND_KILL, emptyPayload, responseHeaders, responseBody );   
+    return status;
+}
+
+int DialServer::hideApplication(
+    string &application,
+    string &responseHeaders, 
+    string &responseBody )
+{
+    ATRACE("%s: Hide %s\n", __FUNCTION__, application.c_str());
+    string emptyPayload;
+    string appUrl = m_appsUrl;
+
+    // just call status to update the run endpoint
+    getStatus( application, responseHeaders, responseBody );
+
+    int status = sendCommand( 
+                             (appUrl.append(application)).append("/"+m_stopEndPoint).append("/suspend"), 
+                             COMMAND_HIDE, emptyPayload, responseHeaders, responseBody );   
     return status;
 }
 

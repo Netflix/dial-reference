@@ -26,6 +26,9 @@
 #ifndef DIALSERVER_H
 #define DIALSERVER_H
 
+#include <stdio.h>
+#include <stdlib.h>
+
 //#define DEBUG
 #ifdef DEBUG
 #define ATRACE(...) printf(__VA_ARGS__)
@@ -126,6 +129,21 @@ public:
         string &responseHeaders, 
         string &responseBody );
 
+    /**
+     * Hide a DIAL application
+     *
+     * @param[in] application Name of the application to launch
+     * @param[out] responseHeaders Returns the HTTP response headers
+     * @param[out] responseBody Returns the HTTP response body
+     *
+     * @return 0 if successful, !0 otherwise
+     */
+
+    int hideApplication(
+        string &application,
+        string &responseHeaders, 
+        string &responseBody );
+                        
     /**
      * Get the status of a DIAL application
      *

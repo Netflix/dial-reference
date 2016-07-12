@@ -275,6 +275,34 @@ static void handle_app_stop(struct mg_connection *conn,
     ds_unlock(ds);
 }
 
+static void handle_app_hide(struct mg_connection *conn,
+                            const struct mg_request_info *request_info,
+                            const char *app_name,
+                            const char *origin_header) {
+    DIALApp *app;
+    DIALServer *ds = request_info->user_data;
+    int canStop = 0;
+
+    ds_lock(ds);
+    app = *find_app(ds, app_name);
+  
+    // update the application state
+    if (app) {
+        app->state = app->callbacks.status_cb(ds, app_name, app->run_id,
+                                              &canStop, app->callback_data);
+    }
+    
+    if (!app || app->state != kDIALStatusRunning) {
+        mg_send_http_error(conn, 404, "Not Found", "Not Found");
+    } else {
+        // not implemented in reference
+        fprintf(stderr, "Hide not implemented for reference.");
+        mg_send_http_error(conn, 501, "Not Implemented",
+                           "Not Implemented");
+    }
+    ds_unlock(ds);
+}
+
 static void handle_dial_data(struct mg_connection *conn,
                              const struct mg_request_info *request_info,
                              const char *app_name,
@@ -411,6 +439,7 @@ static int is_allowed_origin(DIALServer* ds, char * origin, const char * app_nam
 
 #define APPS_URI "/apps/"
 #define RUN_URI "/run"
+#define HIDE_URI "/suspend"
 
 static void *options_response(DIALServer *ds, struct mg_connection *conn, char *host_header, char *origin_header, const char* app_name, const char* methods)
 {    
@@ -498,8 +527,28 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
                 mg_send_http_error(conn, 501, "Not Implemented",
                                    "Not Implemented");
             }
+        }
+        // URI that ends with HIDE_URI
+        else if (!strncmp(request_info->uri + strlen(request_info->uri) - strlen(HIDE_URI), HIDE_URI,
+                     strlen(HIDE_URI))) {
+            char app_name[256] = {0, };  // assuming the application name is not over 256 chars.
+            strncpy(app_name, request_info->uri + strlen(APPS_URI),
+                    ((strlen(request_info->uri) - strlen(RUN_URI) - strlen(HIDE_URI)) - (sizeof(APPS_URI) - 1)));
+
+            if (!strcmp(request_info->request_method, "OPTIONS")) {
+                return options_response(ds, conn, host_header, origin_header, app_name, "POST, OPTIONS");
+            }
+            
+            if (app_name[0] != '\0'                
+                && !strcmp(request_info->request_method, "POST")) {
+                handle_app_hide(conn, request_info, app_name, origin_header);
+            }else{
+                mg_send_http_error(conn, 501, "Not Implemented",
+                                   "Not Implemented");
+            }
+        }
         // URI is of the form */app_name/dial_data
-        } else if (strstr(request_info->uri, DIAL_DATA_URI)) {
+        else if (strstr(request_info->uri, DIAL_DATA_URI)) {
             char laddr[INET6_ADDRSTRLEN];
             const struct sockaddr_in *addr =
                     (struct sockaddr_in *) &request_info->remote_addr;

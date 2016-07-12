@@ -222,15 +222,17 @@ int handleUser(DialDiscovery *pDial) {
             memset(buf, 0, 80);
             printf("0. Rescan and list DIAL servers\n");
             printf("1. Launch Netflix\n");
-            printf("2. Kill Netflix\n");
-            printf("3. Netflix status\n");
-            printf("4. Launch YouTube\n");
-            printf("5. Kill YouTube\n");
-            printf("6. YouTube status\n");
-            printf("7. Run conformance tests\n");
-            printf("8. Wake up on lan/wlan\n");
-            printf("9. QUIT\n");
-            printf("Command (0:1:2:3:4:5:6:7:8:9): ");
+            printf("2. Hide Netflix\n");
+            printf("3. Kill Netflix\n");
+            printf("4. Netflix status\n");
+            printf("5. Launch YouTube\n");
+            printf("6. Hide YouTube\n");
+            printf("7. Kill YouTube\n");
+            printf("8. YouTube status\n");
+            printf("9. Run conformance tests\n");
+            printf("10. Wake up on lan/wlan\n");
+            printf("11. QUIT\n");
+            printf("Command (0:1:2:3:4:5:6:7:8:9:10:11): ");
             scanf("%s", buf);
             switch( atoi(buf) )
                 {
@@ -244,34 +246,42 @@ int handleUser(DialDiscovery *pDial) {
                     pServer->launchApplication( netflix, payload, responseHeaders, responseBody );
                     break;
                 case 2:
+                    printf("Hide Netflix\n");
+                    pServer->hideApplication( netflix, responseHeaders, responseBody );
+                    break;
+                case 3:
                     printf("Kill Netflix\n");
                     pServer->stopApplication( netflix, responseHeaders );
                     break;
-                case 3:
+                case 4:
                     printf("Netflix Status: \n");
                     pServer->getStatus( netflix, responseHeaders, responseBody );
                     printf("RESPONSE: \n%s\n", responseBody.c_str());
                     break;
-                case 4:
+                case 5:
                     printf("Launch YouTube\n");
                     pServer->launchApplication( youtube, payload, responseHeaders, responseBody );
                     break;
-                case 5:
+                case 6:
+                    printf("Hide YouTube\n");
+                    pServer->hideApplication( youtube, responseHeaders, responseBody );
+                    break;
+                case 7:
                     printf("Kill YouTube\n");
                     pServer->stopApplication( youtube, responseHeaders );
                     break;
-                case 6:
+                case 8:
                     printf("YouTube Status: \n");
                     pServer->getStatus( youtube, responseHeaders, responseBody );
                     break;
-                case 7:
+                case 9:
                     runConformance();
                     break;
-                case 8:
+                case 10:
                     printf("Sending the magic packet\n");
                     sendMagic(pServer->getMacAddress());
                     break;
-                case 9:
+                case 11:
                     processInput = 0;
                     processInputOuter = 0;
                     break;
