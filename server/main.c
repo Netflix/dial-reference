@@ -40,6 +40,10 @@
 #include <signal.h>
 #include <stdbool.h>
 
+#include "nf_appmanager.h"
+
+#define NF_APP_MANAGER
+
 #define BUFSIZE 256
 
 static char *spAppNetflix = "netflix";      // name of the netflix executable
@@ -57,6 +61,8 @@ static char spModelName[BUFSIZE];
 static char spUuid[BUFSIZE];
 extern bool wakeOnWifiLan;
 static int gDialPort;
+
+static bool sUseNFAppManager=false;
 
 static char *spAppYouTube = "chrome";
 static char *spAppYouTubeMatch = "chrome.*google-chrome-dial";
@@ -388,7 +394,18 @@ void runDial(void)
 {
     DIALServer *ds;
     ds = DIAL_create();
-    struct DIALAppCallbacks cb_nf = {netflix_start, netflix_hide, netflix_stop, netflix_status};
+    struct DIALAppCallbacks cb_nf;
+    if (sUseNFAppManager){
+        cb_nf.start_cb = am_netflix_start;
+        cb_nf.hide_cb = am_netflix_hide;
+        cb_nf.stop_cb = am_netflix_stop;
+        cb_nf.status_cb = am_netflix_status;
+    }else{
+        cb_nf.start_cb = netflix_start;
+        cb_nf.hide_cb = netflix_hide;
+        cb_nf.stop_cb = netflix_stop;
+        cb_nf.status_cb = netflix_status;
+    }
     struct DIALAppCallbacks cb_yt = {youtube_start, youtube_hide, youtube_stop, youtube_status};
 
     DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, ".netflix.com");
@@ -432,6 +449,13 @@ static void processOption( int index, char * pOption )
             fprintf(stderr, "Option %s is not valid for %s",
                     pOption, WAKE_OPTION_LONG);
             exit(1);
+        }
+        break;
+    case 6:
+        if (strcmp(pOption, "true")==0){
+            sUseNFAppManager=true;
+        }else{
+            sUseNFAppManager=false;
         }
         break;
     default:

@@ -3,7 +3,7 @@ CC=$(TARGET)gcc
 .PHONY: clean
 .DEFAULT_GOAL=all
 
-OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o
+OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o nf_appmanager.o
 HEADERS := $(wildcard *.h)
 
 %.c: $(HEADERS)
