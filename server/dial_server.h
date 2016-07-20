@@ -33,6 +33,7 @@
  */
 typedef enum {
     kDIALStatusStopped,
+    kDIALStatusHide,
     kDIALStatusRunning
 } DIALStatus;
 
@@ -69,6 +70,13 @@ typedef void * DIAL_run_t;
 typedef DIALStatus (*DIAL_app_start_cb)(DIALServer *ds, const char *app_name,
                                         const char *payload, const char *additionalDataUrl,
                                         DIAL_run_t *run_id, void *callback_data);
+
+/*
+ * DIAL hide callback
+ */
+typedef DIALStatus (*DIAL_app_hide_cb)(DIALServer *ds, const char *app_name,
+                                        DIAL_run_t *run_id, void *callback_data);
+
 /*
  * DIAL stop callback
  */
@@ -86,6 +94,7 @@ typedef DIALStatus (*DIAL_app_status_cb)(DIALServer *ds, const char *app_name,
  */
 struct DIALAppCallbacks {
     DIAL_app_start_cb start_cb;
+    DIAL_app_hide_cb hide_cb;
     DIAL_app_stop_cb stop_cb;
     DIAL_app_status_cb status_cb;
 };

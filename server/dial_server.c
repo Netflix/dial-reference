@@ -296,9 +296,19 @@ static void handle_app_hide(struct mg_connection *conn,
         mg_send_http_error(conn, 404, "Not Found", "Not Found");
     } else {
         // not implemented in reference
-        fprintf(stderr, "Hide not implemented for reference.");
-        mg_send_http_error(conn, 501, "Not Implemented",
-                           "Not Implemented");
+        DIALStatus status = app->callbacks.hide_cb(ds, app_name, app->run_id, app->callback_data);
+        if (status!=kDIALStatusHide){
+            fprintf(stderr, "Hide not implemented for reference.\n");
+            mg_send_http_error(conn, 501, "Not Implemented",
+                               "Not Implemented");
+        }else{
+        app->state = kDIALStatusHide;
+        mg_printf(conn, "HTTP/1.1 200 OK\r\n"
+                  "Content-Type: text/plain\r\n"
+                  "Access-Control-Allow-Origin: %s\r\n"
+                  "\r\n",
+                  origin_header);
+        }
     }
     ds_unlock(ds);
 }

@@ -260,6 +260,12 @@ static DIALStatus youtube_start(DIALServer *ds, const char *appname,
     return kDIALStatusRunning;
 }
 
+static DIALStatus youtube_hide(DIALServer *ds, const char *app_name,
+                                        DIAL_run_t *run_id, void *callback_data)
+{
+    return (isAppRunning( spAppYouTube, spAppYouTubeMatch )) ? kDIALStatusRunning : kDIALStatusStopped;
+}
+        
 static DIALStatus youtube_status(DIALServer *ds, const char *appname,
                                  DIAL_run_t run_id, int *pCanStop, void *callback_data) {
     // YouTube can stop
@@ -321,6 +327,12 @@ static DIALStatus netflix_start(DIALServer *ds, const char *appname,
     else return kDIALStatusRunning;
 }
 
+static DIALStatus netflix_hide(DIALServer *ds, const char *app_name,
+                                        DIAL_run_t *run_id, void *callback_data)
+{
+    return (isAppRunning( spAppNetflix, NULL )) ? kDIALStatusRunning : kDIALStatusStopped;
+}
+
 static DIALStatus netflix_status(DIALServer *ds, const char *appname,
                                  DIAL_run_t run_id, int* pCanStop, void *callback_data) {
     // Netflix application can stop
@@ -376,8 +388,8 @@ void runDial(void)
 {
     DIALServer *ds;
     ds = DIAL_create();
-    struct DIALAppCallbacks cb_nf = {netflix_start, netflix_stop, netflix_status};
-    struct DIALAppCallbacks cb_yt = {youtube_start, youtube_stop, youtube_status};
+    struct DIALAppCallbacks cb_nf = {netflix_start, netflix_hide, netflix_stop, netflix_status};
+    struct DIALAppCallbacks cb_yt = {youtube_start, youtube_hide, youtube_stop, youtube_status};
 
     DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, ".netflix.com");
     DIAL_register_app(ds, "YouTube", &cb_yt, NULL, 1, ".youtube.com");
