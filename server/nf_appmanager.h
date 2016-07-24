@@ -23,6 +23,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _NF_APPMANAGER_H_
+#define _NF_APPMANAGER_H_
+
 #include "dial_server.h"
 
 DIALStatus am_netflix_start(DIALServer *ds, const char *appname,
@@ -38,3 +41,5 @@ DIALStatus am_netflix_status(DIALServer *ds, const char *appname,
 
 void am_netflix_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
                   void *callback_data);
+
+#endif

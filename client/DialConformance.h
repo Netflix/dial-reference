@@ -157,21 +157,21 @@ private:
          */
         void stop(
             string& responseHeaders )
-        { stop(_stopurl, responseHeaders ); }
+        { stop(_name, responseHeaders ); }
 
         /**
          * Stop the application using a custom stop URL.
          *
          * @param[out] responseHeaders HTML response headers
          */
-        void stop( string& stopurl, string& responseHeaders)
+        void stop( string& appName, string& responseHeaders)
         {
-            if( !stopurl.empty() )
+            if( !appName.empty() )
             {
-                _pServer->stopApplication( stopurl, responseHeaders );
+                _pServer->stopApplication( appName, responseHeaders );
             }
 #ifdef DEBUG
-            else ATRACE("%s: Not sending stop, stop URL is empty\n", __FUNCTION__);
+            else ATRACE("%s: Not sending stop, appName is empty\n", __FUNCTION__);
 #endif
         }
 

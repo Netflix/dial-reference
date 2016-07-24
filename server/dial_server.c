@@ -217,6 +217,18 @@ static void handle_app_status(struct mg_connection *conn,
 
     app->state = app->callbacks.status_cb(ds, app_name, app->run_id, &canStop,
                                           app->callback_data);
+    char dial_state_str[20];
+    switch(app->state){
+    case kDIALStatusHide:
+        strcpy (dial_state_str, "hidden");
+        break;
+    case kDIALStatusRunning:
+        strcpy (dial_state_str, "running");
+        break;
+    default:
+        strcpy (dial_state_str, "stopped");
+    }
+    
     mg_printf(
             conn,
             "HTTP/1.1 200 OK\r\n"
@@ -237,7 +249,7 @@ static void handle_app_status(struct mg_connection *conn,
             DIAL_VERSION,
             app->name,
             canStop ? "true" : "false",
-            app->state ? "running" : "stopped",
+            dial_state_str,
             app->state == kDIALStatusStopped ?
                     "" : "  <link rel=\"run\" href=\"run\"/>\r\n",
             dial_data);
@@ -261,7 +273,7 @@ static void handle_app_stop(struct mg_connection *conn,
                                               &canStop, app->callback_data);
     }
 
-    if (!app || app->state != kDIALStatusRunning) {
+    if (!app || app->state == kDIALStatusStopped) {
         mg_send_http_error(conn, 404, "Not Found", "Not Found");
     } else {
         app->callbacks.stop_cb(ds, app_name, app->run_id, app->callback_data);
@@ -449,7 +461,7 @@ static int is_allowed_origin(DIALServer* ds, char * origin, const char * app_nam
 
 #define APPS_URI "/apps/"
 #define RUN_URI "/run"
-#define HIDE_URI "/suspend"
+#define HIDE_URI "/hide"
 
 static void *options_response(DIALServer *ds, struct mg_connection *conn, char *host_header, char *origin_header, const char* app_name, const char* methods)
 {    

@@ -223,11 +223,11 @@ int handleUser(DialDiscovery *pDial) {
             printf("0. Rescan and list DIAL servers\n");
             printf("1. Launch Netflix\n");
             printf("2. Hide Netflix\n");
-            printf("3. Kill Netflix\n");
+            printf("3. Stop Netflix\n");
             printf("4. Netflix status\n");
             printf("5. Launch YouTube\n");
             printf("6. Hide YouTube\n");
-            printf("7. Kill YouTube\n");
+            printf("7. Stop YouTube\n");
             printf("8. YouTube status\n");
             printf("9. Run conformance tests\n");
             printf("10. Wake up on lan/wlan\n");
@@ -250,7 +250,7 @@ int handleUser(DialDiscovery *pDial) {
                     pServer->hideApplication( netflix, responseHeaders, responseBody );
                     break;
                 case 3:
-                    printf("Kill Netflix\n");
+                    printf("Stop Netflix\n");
                     pServer->stopApplication( netflix, responseHeaders );
                     break;
                 case 4:
@@ -267,7 +267,7 @@ int handleUser(DialDiscovery *pDial) {
                     pServer->hideApplication( youtube, responseHeaders, responseBody );
                     break;
                 case 7:
-                    printf("Kill YouTube\n");
+                    printf("Stop YouTube\n");
                     pServer->stopApplication( youtube, responseHeaders );
                     break;
                 case 8:

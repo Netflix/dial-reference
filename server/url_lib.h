@@ -58,4 +58,8 @@ char *parse_app_name(const char *uri);
  */
 DIALData *parse_params(char * query_string);
 
+/* Returns a url-encoded version of str */
+/* IMPORTANT: be sure to free() the returned string after use */
+char *url_encode(const char *str);
+
 #endif  // URLLIB_H_

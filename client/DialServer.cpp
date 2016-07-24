@@ -263,7 +263,7 @@ int DialServer::hideApplication(
     getStatus( application, responseHeaders, responseBody );
 
     int status = sendCommand( 
-                             (appUrl.append(application)).append("/"+m_stopEndPoint).append("/suspend"), 
+                             (appUrl.append(application)).append("/"+m_stopEndPoint).append("/hide"), 
                              COMMAND_HIDE, emptyPayload, responseHeaders, responseBody );   
     return status;
 }

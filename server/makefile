@@ -3,7 +3,7 @@ CC=$(TARGET)gcc
 .PHONY: clean
 .DEFAULT_GOAL=all
 
-OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o nf_appmanager.o
+OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o nf_appmanager.o mq_ipc.o jsmn.o
 HEADERS := $(wildcard *.h)
 
 %.c: $(HEADERS)
@@ -14,7 +14,7 @@ HEADERS := $(wildcard *.h)
 all: dialserver test
 
 dialserver: $(OBJS)
-	$(CC) -Wall -Werror -g $(OBJS) -ldl -lpthread -o dialserver
+	$(CC) -Wall -Werror -g $(OBJS) -ldl -lpthread -lrt -o dialserver
 
 test:
 	make -C tests

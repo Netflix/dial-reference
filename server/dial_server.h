@@ -28,6 +28,13 @@
 
 #include <netinet/in.h>
 
+//#define DEBUG
+#ifdef DEBUG
+#define ATRACE(...) printf(__VA_ARGS__)
+#else
+#define ATRACE(...)
+#endif
+
 /*
  * Dial application states
  */
@@ -40,7 +47,7 @@ typedef enum {
 /*
  * DIAL version that is reported via in the status response.
  */
-#define DIAL_VERSION ("\"2.0\"")
+#define DIAL_VERSION ("\"2.1\"")
 
 /*
  * The maximum DIAL payload accepted per the DIAL 1.6.1 specification.
