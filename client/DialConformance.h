@@ -168,7 +168,7 @@ private:
         {
             if( !stopurl.empty() )
             {
-                _pServer->stopApplication( _name, responseHeaders );
+                _pServer->stopApplication( stopurl, responseHeaders );
             }
 #ifdef DEBUG
             else ATRACE("%s: Not sending stop, stop URL is empty\n", __FUNCTION__);
