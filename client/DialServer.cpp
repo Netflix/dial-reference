@@ -203,7 +203,7 @@ int DialServer::launchApplication(
 {
     ATRACE("%s: Launch %s\n", __FUNCTION__, application.c_str());
     string appUrl = m_appsUrl;
-    int status = sendCommand( appUrl.append("/" + application), COMMAND_LAUNCH, payload, responseHeaders, responseBody);
+    int status = sendCommand( appUrl.append(application), COMMAND_LAUNCH, payload, responseHeaders, responseBody);
     return status;
 }
 
@@ -215,10 +215,10 @@ int DialServer::getStatus(
     ATRACE("%s: GetStatus %s\n", __FUNCTION__, application.c_str());
     string emptyPayload;
     string appUrl = m_appsUrl;
-    int status = sendCommand( appUrl.append("/" + application), COMMAND_STATUS, emptyPayload, responseHeaders, responseBody );
+    int status = sendCommand( appUrl.append(application), COMMAND_STATUS, emptyPayload, responseHeaders, responseBody );
 
     if (!status) return 0;
-    //ATRACE("Body: %s\n", responseBody.c_str());
+    ATRACE("Body: %s\n", responseBody.c_str());
     unsigned found = responseBody.find("href=");
     if( found != string::npos )
     {
@@ -246,8 +246,8 @@ int DialServer::stopApplication(
     getStatus( application, responseHeaders, responseBody );
 
     int status = sendCommand( 
-                             (appUrl.append("/" + application)).append("/"+m_stopEndPoint),
-                             COMMAND_KILL, emptyPayload, responseHeaders, responseBody );
+                             (appUrl.append(application)).append("/"+m_stopEndPoint), 
+                             COMMAND_KILL, emptyPayload, responseHeaders, responseBody );   
     return status;
 }
 
