@@ -43,8 +43,6 @@
 #include "url_lib.h"
 #include "nf_appmanager.h"
 
-#define NF_APP_MANAGER
-
 #define BUFSIZE 256
 
 static char *spAppNetflix = "netflix";      // name of the netflix executable
