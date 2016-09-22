@@ -7,6 +7,8 @@
 #include "mq_ipc.h"
 
 #define PMODE 0655
+#define IPC_MAX_MSG_SIZE   5*1024    // Account for 4kb DIAL payload
+#define IPC_MAX_MSG_COUNT  1
 
 static mqd_t mClientServer=-1;
 static mqd_t mServerClient=-1;
@@ -14,8 +16,8 @@ static mqd_t mServerClient=-1;
 int createMessageQ(const char* fd, int flags)
 {
     struct mq_attr attr;
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = 512;
+    attr.mq_maxmsg = IPC_MAX_MSG_SIZE;
+    attr.mq_msgsize = IPC_MAX_MSG_COUNT;
 
     mqd_t handle = mq_open(fd, flags, PMODE, &attr);
     if (handle == -1) {

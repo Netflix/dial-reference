@@ -86,6 +86,9 @@ int DialServer::sendCommand(
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.size());
         if( payload.size() )
         {
+            struct curl_slist *slist=NULL;
+            slist = curl_slist_append(slist, "Expect:");
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
         }
 #ifdef DEBUG

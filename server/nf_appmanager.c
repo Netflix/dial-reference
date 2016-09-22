@@ -6,6 +6,9 @@
 #include "jsmn.h"
 #include "url_lib.h"
 
+#define IPC_BUF_SIZE 5*1024   // account for 4kb payload
+#define IPC_TIMEOUT       2
+
 static char *defaultLaunchParam = "source_type=12";
 static char * mq_send_ch = "/fromAppManager";
 static char * mq_receive_ch = "/toAppManager";
@@ -77,13 +80,13 @@ DIALStatus get_nf_state()
     if (mq_ipc_connect(mq_send_ch, mq_receive_ch))
         exit(1);
     //send status request
-    char tx_buf[64];
-    snprintf(tx_buf, 64, mq_tx_msg_base, "", CMD_CNT_GET_STATUS);
-    if (mq_ipc_send_timed(tx_buf, 2))
+    char tx_buf[IPC_BUF_SIZE];
+    snprintf(tx_buf, sizeof(tx_buf), mq_tx_msg_base, "", CMD_CNT_GET_STATUS);
+    if (mq_ipc_send_timed(tx_buf, IPC_TIMEOUT))
         errorMsg();
     //recieve status
-    char rx_buf[512];
-    if(mq_ipc_receive_timed(rx_buf, 512, 2))
+    char rx_buf[IPC_BUF_SIZE];
+    if(mq_ipc_receive_timed(rx_buf, sizeof(rx_buf), IPC_TIMEOUT))
         errorMsg();
     ATRACE("recieved: \n %s\n", rx_buf);
 
@@ -151,8 +154,8 @@ DIALStatus am_netflix_start(DIALServer *ds, const char *appname,
     
     ATRACE ("start netflix via app manager..\n");
     
-    char tx_buf[512];
-    char rx_buf[512];
+    char tx_buf[IPC_BUF_SIZE];
+    char rx_buf[IPC_BUF_SIZE];
     mq_ipc_connect(mq_send_ch, mq_receive_ch);
 
     char sQueryParam[DIAL_MAX_PAYLOAD+DIAL_MAX_ADDITIONALURL+40];
@@ -176,22 +179,22 @@ DIALStatus am_netflix_start(DIALServer *ds, const char *appname,
     switch (current_state) {
     case kDIALStatusHide:
         // resume Netflix
-        snprintf(tx_buf, 512, mq_tx_msg_base, sQueryParam, CMD_CNT_START_FROM_HIDE);
+        snprintf(tx_buf, sizeof(tx_buf), mq_tx_msg_base, sQueryParam, CMD_CNT_START_FROM_HIDE);
         break;
     case kDIALStatusStopped:
         // start Netflix
         s_run_id++;
-        snprintf(tx_buf, 512, mq_tx_msg_base, sQueryParam, CMD_CNT_START);
+        snprintf(tx_buf, sizeof(tx_buf), mq_tx_msg_base, sQueryParam, CMD_CNT_START);
         break;
     default:
         // Already running.  Just get status
-        snprintf(tx_buf, 512, mq_tx_msg_base, "", CMD_CNT_GET_STATUS);
+        snprintf(tx_buf, sizeof(tx_buf), mq_tx_msg_base, "", CMD_CNT_GET_STATUS);
         break;
     }
     
-    if (mq_ipc_send_timed(tx_buf, 2))
+    if (mq_ipc_send_timed(tx_buf, IPC_TIMEOUT))
         errorMsg();
-    if (mq_ipc_receive_timed(rx_buf, 512, 2))
+    if (mq_ipc_receive_timed(rx_buf, sizeof(rx_buf), IPC_TIMEOUT))
         errorMsg();
     ATRACE("recieved: \n %s\n", rx_buf);
 
@@ -207,13 +210,13 @@ DIALStatus am_netflix_hide(DIALServer *ds, const char *app_name,
     if (mq_ipc_connect(mq_send_ch, mq_receive_ch))
         exit(1);
     //send status request
-    char tx_buf[64];
-    snprintf(tx_buf, 64, mq_tx_msg_base, "", CMD_CNT_HIDE);
-    if (mq_ipc_send_timed(tx_buf, 2))
+    char tx_buf[IPC_BUF_SIZE];
+    snprintf(tx_buf, sizeof(tx_buf), mq_tx_msg_base, "", CMD_CNT_HIDE);
+    if (mq_ipc_send_timed(tx_buf, IPC_TIMEOUT))
         errorMsg();
     //recieve status
-    char rx_buf[512];
-    if(mq_ipc_receive_timed(rx_buf, 512, 2))
+    char rx_buf[IPC_BUF_SIZE];
+    if(mq_ipc_receive_timed(rx_buf, sizeof(rx_buf), IPC_TIMEOUT))
         errorMsg();
     ATRACE("recieved: \n %s\n", rx_buf);
     mq_ipc_disconnect();
@@ -234,13 +237,13 @@ void am_netflix_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
     if (mq_ipc_connect(mq_send_ch, mq_receive_ch))
         exit(1);
     //send status request
-    char tx_buf[64];
-    snprintf(tx_buf, 64, mq_tx_msg_base, "", CMD_CNT_STOP);
-    if (mq_ipc_send_timed(tx_buf, 2))
+    char tx_buf[IPC_BUF_SIZE];
+    snprintf(tx_buf, sizeof(tx_buf), mq_tx_msg_base, "", CMD_CNT_STOP);
+    if (mq_ipc_send_timed(tx_buf, IPC_TIMEOUT))
         errorMsg();
     //recieve status
-    char rx_buf[512];
-    if(mq_ipc_receive_timed(rx_buf, 512, 2))
+    char rx_buf[IPC_BUF_SIZE];
+    if(mq_ipc_receive_timed(rx_buf, sizeof(rx_buf), IPC_TIMEOUT))
         errorMsg();
     ATRACE("recieved: \n %s\n", rx_buf);
     mq_ipc_disconnect();    
