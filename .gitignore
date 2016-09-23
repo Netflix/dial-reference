@@ -1,4 +1,6 @@
+*.so
 *.o
 client/dialclient
 server/dialserver
 server/tests/run_tests
+client/report.html

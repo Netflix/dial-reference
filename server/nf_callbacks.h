@@ -23,23 +23,23 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _NF_APPMANAGER_H_
-#define _NF_APPMANAGER_H_
+#ifndef _NF_CALLBACKS_H
+#define _NF_CALLBACKS_H
 
 #include "dial_server.h"
 
-DIALStatus am_netflix_start(DIALServer *ds, const char *appname,
+DIALStatus netflix_start(DIALServer *ds, const char *appname,
                             const char *payload, const char *additionalDataUrl,
                             DIAL_run_t *run_id, void *callback_data);
 
 
-DIALStatus am_netflix_hide(DIALServer *ds, const char *app_name,
+DIALStatus netflix_hide(DIALServer *ds, const char *app_name,
                         DIAL_run_t *run_id, void *callback_data);
 
-DIALStatus am_netflix_status(DIALServer *ds, const char *appname,
+DIALStatus netflix_status(DIALServer *ds, const char *appname,
                           DIAL_run_t run_id, int* pCanStop, void *callback_data);
 
-void am_netflix_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
+void netflix_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
                   void *callback_data);
 
 #endif

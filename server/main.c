@@ -41,27 +41,24 @@
 #include <stdbool.h>
 
 #include "url_lib.h"
-#include "nf_appmanager.h"
+#include "nf_callbacks.h"
 
 #define BUFSIZE 256
 
-static char *spAppNetflix = "netflix";      // name of the netflix executable
+char *spAppNetflix = "netflix";      // name of the netflix executable
 static char *spDefaultNetflix = "../../../src/platform/qt/netflix";
 static char *spDefaultData="../../../src/platform/qt/data";
 static char *spNfDataDir = "NF_DATA_DIR=";
-static char *defaultLaunchParam = "source_type=12";
 static char *spDefaultFriendlyName = "DIAL server sample";
 static char *spDefaultModelName = "NOT A VALID MODEL NAME";
 static char *spDefaultUuid = "deadbeef-dead-beef-dead-beefdeadbeef";
 static char spDataDir[BUFSIZE];
-static char spNetflix[BUFSIZE];
+char spNetflix[BUFSIZE];
 static char spFriendlyName[BUFSIZE];
 static char spModelName[BUFSIZE];
 static char spUuid[BUFSIZE];
 extern bool wakeOnWifiLan;
 static int gDialPort;
-
-static bool sUseNFAppManager=false;
 
 static char *spAppYouTube = "chrome";
 static char *spAppYouTubeMatch = "chrome.*google-chrome-dial";
@@ -71,10 +68,7 @@ static char *spYouTubePS3UserAgent = "--user-agent="
     "Chrome/19.0.1048.0 LeanbackShell/01.00.01.73 QA Safari/535.22 Sony PS3/ "
     "(PS3, , no, CH)";
 
-// Adding 20 bytes for prepended source_type for Netflix
-static char sQueryParam[DIAL_MAX_PAYLOAD+DIAL_MAX_ADDITIONALURL+40];
-
-static int doesMatch( char* pzExp, char* pzStr)
+int doesMatch( char* pzExp, char* pzStr)
 {
     regex_t exp;
     int ret;
@@ -109,7 +103,7 @@ void signalHandler(int signal)
  * name) and command line (if needed).
  * Implementors can override this function with an equivalent.
  */
-static int isAppRunning( char *pzName, char *pzCommandPattern ) {
+int isAppRunning( char *pzName, char *pzCommandPattern ) {
   DIR* proc_fd = opendir("/proc");
   if( proc_fd != NULL ) {
     struct dirent* procEntry;
@@ -163,7 +157,7 @@ static int isAppRunning( char *pzName, char *pzCommandPattern ) {
   return 0;
 }
 
-static pid_t runApplication( const char * const args[], DIAL_run_t *run_id ) {
+pid_t runApplication( const char * const args[], DIAL_run_t *run_id ) {
   pid_t pid = fork();
   if (pid != -1) {
     if (!pid) { // child
@@ -190,7 +184,7 @@ static pid_t runApplication( const char * const args[], DIAL_run_t *run_id ) {
  * If they match, return false
  * If they don't match, return true
  */
-static int shouldRelaunch(
+int shouldRelaunch(
     DIALServer *pServer,
     const char *pAppName,
     const char *args )
@@ -244,79 +238,6 @@ static void youtube_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
     }
 }
 
-static DIALStatus netflix_start(DIALServer *ds, const char *appname,
-                                const char *payload, const char *additionalDataUrl,
-                                DIAL_run_t *run_id, void *callback_data) {
-    int shouldRelaunchApp = 0;
-    int appPid = 0;
-
-    // only launch Netflix if it isn't running
-    appPid = isAppRunning( spAppNetflix, NULL );
-    shouldRelaunchApp = shouldRelaunch( ds, appname, payload );
-
-    // construct the payload to determine if it has changed from the previous launch
-    memset( sQueryParam, 0, sizeof(sQueryParam) );
-    strcat( sQueryParam, defaultLaunchParam );
-    if(strlen(payload))
-    {
-        char * pUrlEncodedParams;
-        pUrlEncodedParams = url_encode( payload );
-        if( pUrlEncodedParams )
-        {
-            strcat( sQueryParam, "&dial=");
-            strcat( sQueryParam, pUrlEncodedParams );
-            free( pUrlEncodedParams );
-        }
-    }
-
-    if(strlen(additionalDataUrl)){
-        strcat(sQueryParam, "&");
-        strcat(sQueryParam, additionalDataUrl);
-    }
-
-    printf("appPid = %s, shouldRelaunch = %s queryParams = %s\n",
-          appPid?"TRUE":"FALSE",
-          shouldRelaunchApp?"TRUE":"FALSE",
-          sQueryParam );
-
-    // if its not running, launch it.  The Netflix application should
-    // never be relaunched
-    if( !appPid )
-    {
-        const char * const netflix_args[] = {spNetflix, "-Q", sQueryParam, 0};
-        return runApplication( netflix_args, run_id );
-    }
-    else return kDIALStatusRunning;
-}
-
-static DIALStatus netflix_hide(DIALServer *ds, const char *app_name,
-                                        DIAL_run_t *run_id, void *callback_data)
-{
-    return (isAppRunning( spAppNetflix, NULL )) ? kDIALStatusRunning : kDIALStatusStopped;
-}
-
-static DIALStatus netflix_status(DIALServer *ds, const char *appname,
-                                 DIAL_run_t run_id, int* pCanStop, void *callback_data) {
-    // Netflix application can stop
-    *pCanStop = 1;
-
-    waitpid((pid_t)(long)run_id, NULL, WNOHANG); // reap child
-
-    return isAppRunning( spAppNetflix, NULL ) ? kDIALStatusRunning : kDIALStatusStopped;
-}
-
-static void netflix_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
-                         void *callback_data) {
-    int pid;
-    pid = isAppRunning( spAppNetflix, NULL );
-    if( pid )
-    {
-        printf("Killing pid %d\n", pid);
-        kill((pid_t)pid, SIGTERM);
-        waitpid((pid_t)pid, NULL, 0); // reap child
-    }
-}
-
 void run_ssdp(int port, const char *pFriendlyName, const char * pModelName, const char *pUuid);
 
 static void printUsage()
@@ -351,17 +272,10 @@ void runDial(void)
     DIALServer *ds;
     ds = DIAL_create();
     struct DIALAppCallbacks cb_nf;
-    if (sUseNFAppManager){
-        cb_nf.start_cb = am_netflix_start;
-        cb_nf.hide_cb = am_netflix_hide;
-        cb_nf.stop_cb = am_netflix_stop;
-        cb_nf.status_cb = am_netflix_status;
-    }else{
-        cb_nf.start_cb = netflix_start;
-        cb_nf.hide_cb = netflix_hide;
-        cb_nf.stop_cb = netflix_stop;
-        cb_nf.status_cb = netflix_status;
-    }
+    cb_nf.start_cb = netflix_start;
+    cb_nf.hide_cb = netflix_hide;
+    cb_nf.stop_cb = netflix_stop;
+    cb_nf.status_cb = netflix_status;
     struct DIALAppCallbacks cb_yt = {youtube_start, youtube_hide, youtube_stop, youtube_status};
 
     DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, ".netflix.com");
@@ -405,13 +319,6 @@ static void processOption( int index, char * pOption )
             fprintf(stderr, "Option %s is not valid for %s",
                     pOption, WAKE_OPTION_LONG);
             exit(1);
-        }
-        break;
-    case 6:
-        if (strcmp(pOption, "true")==0){
-            sUseNFAppManager=true;
-        }else{
-            sUseNFAppManager=false;
         }
         break;
     default:

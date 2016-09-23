@@ -3,23 +3,27 @@ CC=$(TARGET)gcc
 .PHONY: clean
 .DEFAULT_GOAL=all
 
-OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o nf_appmanager.o mq_ipc.o jsmn.o
+OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o
 HEADERS := $(wildcard *.h)
 
 %.c: $(HEADERS)
 
 %.o: %.c $(HEADERS)
-	$(CC) -Wall -Werror -g -std=gnu99 $(CFLAGS) -c $*.c -o $*.o
+#	$(CC) -Wall -Werror -g -std=gnu99 $(CFLAGS) -c $*.c -o $*.o
+	$(CC) -Wall -g -std=gnu99 $(CFLAGS) -c $*.c -o $*.o
 
 all: dialserver test
 
-dialserver: $(OBJS)
-	$(CC) -Wall -Werror -g $(OBJS) -ldl -lpthread -lrt -o dialserver
+nf_callbacks_lib: nf_callbacks.o
+	$(CC) -Wall -Werror -g nf_callbacks.o -o libnfCallbacks.so --shared
+
+dialserver: nf_callbacks_lib $(OBJS)
+	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver
 
 test:
 	make -C tests
 	./tests/run_tests
 
 clean:
-	rm -f *.o dialserver
+	rm -f *.o dialserver *.so
 	make -C tests clean

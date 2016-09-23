@@ -50,10 +50,6 @@
 #define WAKE_OPTION_LONG "--wake-on-wifi-len"
 #define WAKE_DESCRIPTION "Enable wake on wifi/len.  Value: on/off.  Default (on)"
 
-#define NFMANAGER_OPTION "-A"
-#define NFMANAGER_OPTION_LONG "--netflix-app-manager"
-#define NFMANAGER_DESCRIPTION "Enable interface to netflix app manager."
-
 struct dial_options
 {
     const char * pOption;
@@ -92,11 +88,6 @@ struct dial_options gDialOptions[] =
         WAKE_OPTION,
         WAKE_OPTION_LONG,
         WAKE_DESCRIPTION
-    },
-    {
-        NFMANAGER_OPTION,
-        NFMANAGER_OPTION_LONG,
-        NFMANAGER_DESCRIPTION
     }
 };
 
