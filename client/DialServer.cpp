@@ -66,7 +66,8 @@ int DialServer::sendCommand(
 {
     CURL *curl;
     CURLcode res = CURLE_OK;
-
+    struct curl_slist *slist=NULL;
+    
     if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) 
     {
         fprintf(stderr, "curl_global_init() failed\n");
@@ -86,7 +87,6 @@ int DialServer::sendCommand(
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.size());
         if( payload.size() )
         {
-            struct curl_slist *slist=NULL;
             slist = curl_slist_append(slist, "Expect:");
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
@@ -108,6 +108,7 @@ int DialServer::sendCommand(
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
     res = curl_easy_perform(curl);
 
+    if (curl_slist!=NULL) curl_slist_free_all(slist);
     curl_easy_cleanup(curl);
     curl_global_cleanup();
     return (res == CURLE_OK);
