@@ -66,7 +66,7 @@ int DialServer::sendCommand(
 {
     CURL *curl;
     CURLcode res = CURLE_OK;
-    struct curl_slist *slist=NULL;
+    struct curl_slist *slist = NULL;
     
     if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) 
     {
