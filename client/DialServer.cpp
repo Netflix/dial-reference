@@ -108,7 +108,7 @@ int DialServer::sendCommand(
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
     res = curl_easy_perform(curl);
 
-    if (curl_slist!=NULL) curl_slist_free_all(slist);
+    if (slist!=NULL) curl_slist_free_all(slist);
     curl_easy_cleanup(curl);
     curl_global_cleanup();
     return (res == CURLE_OK);
