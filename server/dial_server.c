@@ -638,7 +638,6 @@ int DIAL_register_app(DIALServer *ds, const char *app_name,
     ds_lock(ds);
     ptr = find_app(ds, app_name);
     if (*ptr != NULL) {  // app already registered
-        ds_unlock(ds);
         ret = 0;
     } else {
         app = malloc(sizeof(DIALApp));
