@@ -62,7 +62,7 @@ static void printServerList( vector<DialServer*> list )
         (*it)->getUuid( uuid );
         macAddr    =(*it)->getMacAddress();
         wolTimeOut =(*it)->getWakeOnLanTimeout();
-        printf("%Zu: Server IP[%s] UUID[%s] FriendlyName[%s] MacAddress[%s] WakeOnLanTimeout[%d]\n", 
+        printf("%d: Server IP[%s] UUID[%s] FriendlyName[%s] MacAddress[%s] WakeOnLanTimeout[%d]\n", 
                i+1, (*it)->getIpAddress().c_str(),
                uuid.c_str(), name.c_str(), macAddr.c_str(), wolTimeOut);
     }
