@@ -11,7 +11,7 @@ dialclient: $(OBJS) ${includes}
 	$(CC) -Wall -Werror -g $(OBJS) $(INCLUDES) $(LDFLAGS) -ldl -lpthread -lcurl -lz -lcrypto -lssl -lcares -o dialclient
 
 dialclient_debug: $(OBJS) ${includes}
-	$(CC) -DDEBUG -Wall -Werror -g $(OBJS) $(INCLUDES) $(LDFLAGS) -ldl -lpthread -lcurl -lz -lcrypto -lssl -lcares -o dialclient
+	$(CC) -DDEBUG -Wall -Werror -g $(OBJS) $(INCLUDES) $(LDFLAGS) -ldl -lpthread -lcurl -lz -lcrypto -lssl -lcares -o dialclient_debug
 
 clean:
 	rm -f *.o dialclient
