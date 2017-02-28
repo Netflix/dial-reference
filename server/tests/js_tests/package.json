@@ -1,12 +1,16 @@
 {
   "name": "dialtests",
   "version": "1.0.0",
-  "description": "Tests for DIAL server using nf-dialclient",
-  "main": "index.js",
+  "description": "Tests for DIAL server",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Netflix/dial-reference.git"
+  },
+  "main": "",
   "scripts": {
   },
   "author": "Shruti Ranganathan Jothi",
-  "license": "unlicensed",
+  "license": "BSD-2-Clause",
   "dependencies": {
     "q": "~1.4.1",
     "node-ssdp": "^3.2.0",
