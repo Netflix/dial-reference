@@ -61,5 +61,6 @@ function test() {
 module.exports.test = test;
 
 if (require.main === module) {
-    test.done();
+    test()
+      .done();
 }
