@@ -42,7 +42,7 @@ function discover() {
 }
 
 function getApplicationStatus(host, app, clientDialVer) {
-    clientDialVer = clientDialVer || "2.1"; // To test backward compatibility
+    clientDialVer = clientDialVer || "2.1"; // To test backward compatibility, 2.1 by default
 
     return new Q()
       .then(constructAppResourceUrl.bind(null, host, app))
@@ -63,15 +63,15 @@ function getApplicationStatus(host, app, clientDialVer) {
                       var statusCode = response.statusCode;
                       var contentType = response.headers["content-type"];
                       if(statusCode !== 200) {
-                          return reject(new Error("Expected statusCode 200 while querying app status but got " + statusCode));
+                          return reject(new Error("Expected statusCode 200 while querying application status but got " + statusCode));
                       }
                       // TODO: Remove application/xml from accepted types
                       if(contentType.indexOf("text/xml") === -1 && contentType.indexOf("application/xml") === -1) {
-                          return reject(new Error("Expected MIME type 'text/xml' while querying app status but got " + contentType));
+                          return reject(new Error("Expected MIME type 'text/xml' while querying application status but got " + contentType));
                       }
                       // Extract fields from body
                       try {
-                          if(body.indexOf("xmlns") === -1 || body.indexOf("name") === -1 || body.indexOf("state") === -1) {
+                          if(body.indexOf("xmlns") === -1 || body.indexOf("<name>") === -1 || body.indexOf("<state>") === -1) {
                               return reject(new Error("One or more required fields were not present in the application status response"));
                           }
                           var parsedResponse = {
@@ -79,6 +79,9 @@ function getApplicationStatus(host, app, clientDialVer) {
                               "name" : body.split("<name>")[1].split("</name>")[0].replace(/\s/g, ""),
                               "state" : body.split("<state>")[1].split("</state>")[0].replace(/\s/g, "")
                           };
+                          if(parsedResponse.xmlns !== "urn:dial-multiscreen-org:schemas:dial") {
+                              return reject(new Error("xmlns is not 'urn:dial-multiscreen-org:schemas:dial' in the app status response " + parsedResponse.xmlns));
+                          }
 
                           if(body.indexOf("dialVer") !== -1) {
                               parsedResponse.dialVer = body.split("dialVer=")[1].split(" ")[0].split(">")[0].replace(/\s/g, "").replace(/\"/g, "");
@@ -89,24 +92,20 @@ function getApplicationStatus(host, app, clientDialVer) {
                           if(body.indexOf("<link") !== -1) {
                               parsedResponse.rel = body.split("<link rel=")[1].split(" ")[0].split("/>")[0].replace(/\"/g, "");
                               if(parsedResponse.rel !== "run") {
-                                  return reject(new Error("link rel is not 'run' in the application status response"));
+                                  return reject(new Error("@rel attribute is not 'run' in the application status response"));
                               }
                               parsedResponse.href = body.split("href=")[1].split(" ")[0].split("/>")[0].replace(/\s/g, "").replace(/\"/g, "");
                           }
                           if(body.indexOf("<additionalData>") !== -1) {
                               parsedResponse.additionalData = body.split("<additionalData>")[1].split("</additionalData>")[0].replace(/\s/g, "");
                           }
-                          if(parsedResponse.xmlns !== "urn:dial-multiscreen-org:schemas:dial") {
-                              return reject(new Error("xmlns is not 'urn:dial-multiscreen-org:schemas:dial' in the app status response " + parsedResponse.xmlns));
-                          }
-
                           return resolve(parsedResponse);
                       }
                       catch (err) {
-                          return reject(new Error("There was a problem extracting fields from app status. Status returned : " + body));
+                          return reject(new Error("There was a problem extracting one or more fields from application status. Status returned : \n" + body));
                       }
                   }
-                  return Q.reject(new Error("Error getting app status " + error));
+                  return reject(new Error("Error retrieving application status " + error));
               });
           });
       });
@@ -115,6 +114,7 @@ function getApplicationStatus(host, app, clientDialVer) {
 function launchApplication(host, app, payload) {
     return new Q()
       .then(constructAppResourceUrl.bind(null, host, app))
+      // TODO: Send friendlyName query parameter for DIAL 2.1 and greater versions of server
       .then(function (appResourceUrl) {
           var request = {
               url: appResourceUrl,
@@ -123,7 +123,6 @@ function launchApplication(host, app, payload) {
               headers: {
                   // TODO: Remove host header
                   "Host" : appResourceUrl.split("http://")[1].split("/")[0],
-                  // TODO: Check charset
                   "Content-Type" : "text/plain;charset=\"utf-8\""
               }
           };
@@ -138,7 +137,7 @@ function launchApplication(host, app, payload) {
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
                   if(!error) {
-                      return resolve(response.statusCode);
+                      return resolve(response);
                   }
                   return reject(new Error("Error launching application " + error));
               });
@@ -155,7 +154,8 @@ function stopApplication(host, app) {
                 if(response.href) {
                     return appResourceUrl + "/" + response.href; // Construct Application Instance Url
                 }
-                return Q.reject(new Error("Could not get instance href from application status to construct Application Instance Url"));
+                return Q.reject(new Error("Could not get attribute @href from application status to construct Application Instance Url. "
+                      + "This means the DIAL server does not support STOP requests for this application."));
             });
       })
       .then(function (appResourceUrl) {
@@ -169,7 +169,7 @@ function stopApplication(host, app) {
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
                   if(!error) {
-                      return resolve(response.statusCode);
+                      return resolve(response);
                   }
                   return reject(new Error("Error stopping application " + error));
               });
@@ -200,7 +200,11 @@ function hideApplication(host, app) {
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
                   if(!error) {
-                      return resolve(response.statusCode);
+                      if(response.statusCode === 501) {
+                          return reject("HIDE request returned 501 NOT IMPLEMENTED. " +
+                              "This means the DIAL server does not support HIDE for this application.");
+                      }
+                      return resolve(response);
                   }
                   return reject(new Error("Error hiding application " + error));
               });
@@ -221,7 +225,7 @@ function stopApplicationInstance(instanceUrl) {
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
                   if(!error) {
-                      return resolve(response.statusCode);
+                      return resolve(response);
                   }
                   return reject(new Error("Error stopping application " + error));
               });
@@ -242,7 +246,7 @@ function hideApplicationInstance(instanceUrl) {
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
                   if(!error) {
-                      return resolve(response.statusCode);
+                      return resolve(response);
                   }
                   return reject(new Error("Error hiding application " + error));
               });

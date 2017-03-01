@@ -6,42 +6,47 @@ var dial      =   require("../libs/dialClient.js"),
 
 function test() {
     var host = utils.getParam("host");
+    var app = utils.getParam("app");
+    var timeToWaitForStateChange = utils.getParam("timeToWaitForStateChange") || 5000;
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Try to hide an invalid instance of Netflix application and expect status code 404");
+          console.log("TEST " + __filename + ": Try to hide an invalid instance of " + app + " application and expect status code 404");
       })
-      .then(dial.launchApplication.bind(null, host, "Netflix"))
-      .then(function (status) {
-          if(status !== 200 && status !== 201) {
-              return Q.reject(new Error("Error launching Netflix application. Expected status code 200/201 but got " + status));
+      .then(dial.launchApplication.bind(null, host, app))
+      .then(function (response) {
+          if(response.statusCode !== 201) {
+              return Q.reject(new Error("Error launching " + app + " application. Expected status code 201 but got " + response.statusCode));
           }
       })
+      .delay(timeToWaitForStateChange)
       .then(function () {
-          return dial.getApplicationStatus(host, "Netflix");
+          return dial.getApplicationStatus(host, app);
       })
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
-              return Q.reject(new Error("Could not retrieve current Netflix application state"));
+              return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
-          if(result.dialVer && result.dialVer !== "2.1") {
-              return Q.reject(new Error("This test is only applicable for DIAL version >= 2.1"));
+          if(result.state !== "running") {
+              return Q.reject(new Error("Expected " + app + " state to be running but state was " + result.state));
           }
-          return result.state;
       })
       .then(function () {
           return dial.getAppsUrl(host);
       })
       .then(function (appsUrl) {
-          var invalidInstanceUrl =  appsUrl + "/application/xyz";
+          var invalidInstanceUrl =  appsUrl + "/" + app + "/xyz";
           return invalidInstanceUrl;
       })
       .then(function (url) {
           return dial.hideApplicationInstance(url);
       })
-      .then(function (status) {
-          if(status !== 404) {
-              return Q.reject(new Error("Tried to hide invalid application instance. Expected statusCode: 404 but got " + status));
+      .then(function (response) {
+          if(response.statusCode === 501) {
+              return Q.reject(new Error("The DIAL server returned 501 NOT IMPLEMENTED. This means it does not support HIDE operation"));
+          }
+          if(response.statusCode !== 404) {
+              return Q.reject(new Error("Tried to hide invalid application instance. Expected statusCode: 404 but got " + response.statusCode));
           }
       })
       .then(function () {
