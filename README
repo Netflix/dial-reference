@@ -78,7 +78,7 @@ If you do not provide an ip_address and multiple servers are discovered, the
 client will prompt you to select a server.
 
 --------------------------------------------------------------------------------
-NEW: Node.js tests for DIAL server
+NEW: Node.js tests for DIAL server 2.1
 --------------------------------------------------------------------------------
 Node.js tests to test DIAL server implementation are now available under
 server/tests/js_tests. To run these tests againsts a DIAL server:
