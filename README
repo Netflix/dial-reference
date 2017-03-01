@@ -93,20 +93,20 @@ The file tests.js is a batch runner and will run all the tests serially. It
 takes the following arguments:
 
       host: <IP address of host in which DIAL server is running>
-      application: Name of the application to test against(eg: Netflix, YouTube)
+      app: Name of the application to test against (eg: Netflix, YouTube)
       timeToWaitForStateChange: Some of these tests wait for application state
       changes before querying for application status. Default is 5000(ms)
 
 Example:
 server/tests/js_tests/tests> node tests.js host=<ip of DIAL server>
-application="Netflix" timeToWaitForStateChange=2000
+app="Netflix" timeToWaitForStateChange=2000
 
 To run each test independantly and not through test.js, just call the
 appropriate test file name instead of test.js.
 
 Example:
 server/tests/js_tests/tests> node discoverServerUnderTest.js
-host=<ip of DIAL server> application="Netflix" timeToWaitForStateChange=2000
+host=<ip of DIAL server> app="Netflix" timeToWaitForStateChange=2000
 
 Any application specific setup/requirements should be taken care of before
 running these tests.
