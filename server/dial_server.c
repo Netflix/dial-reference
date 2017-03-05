@@ -304,7 +304,7 @@ static void handle_app_hide(struct mg_connection *conn,
                                               &canStop, app->callback_data);
     }
     
-    if (!app || app->state != kDIALStatusRunning) {
+    if (!app || (app->state != kDIALStatusRunning && app->state != kDIALStatusHide)) {
         mg_send_http_error(conn, 404, "Not Found", "Not Found");
     } else {
         // not implemented in reference
