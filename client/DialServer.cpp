@@ -67,6 +67,10 @@ int DialServer::sendCommand(
     CURL *curl;
     CURLcode res = CURLE_OK;
     struct curl_slist *slist = NULL;
+
+    // since we are Dial Version 2.1, added query paramter to indicate Dial Version
+    url += "?clientDialVer=";
+    url += CLIENT_VERSION;
     
     if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) 
     {

@@ -41,6 +41,8 @@
 
 using namespace std;
 
+#define CLIENT_VERSION "2.1"
+
 class DialServer
 {
 public:

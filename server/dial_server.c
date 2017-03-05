@@ -183,6 +183,13 @@ static void handle_app_status(struct mg_connection *conn,
     int canStop = 0;
     DIALServer *ds = request_info->user_data;
 
+    // determin client version
+    char *clientVersionStr = parse_param(request_info->query_string, "clientDialVer");
+    double clientVersion = 0.0;
+    if (clientVersionStr){
+        clientVersion = atof(clientVersionStr);
+    }
+    
     ds_lock(ds);
     app = *find_app(ds, app_name);
     if (!app) {
@@ -217,8 +224,16 @@ static void handle_app_status(struct mg_connection *conn,
 
     app->state = app->callbacks.status_cb(ds, app_name, app->run_id, &canStop,
                                           app->callback_data);
+
+    DIALStatus localState = app->state;
+    
+    // overwrite app->state if cilent version < 2.1    
+    if (clientVersion < 2.09 && localState==kDIALStatusHide){
+        localState=kDIALStatusStopped;
+    }
+    
     char dial_state_str[20];
-    switch(app->state){
+    switch(localState){
     case kDIALStatusHide:
         strcpy (dial_state_str, "hidden");
         break;
@@ -250,7 +265,7 @@ static void handle_app_status(struct mg_connection *conn,
             app->name,
             canStop ? "true" : "false",
             dial_state_str,
-            app->state == kDIALStatusStopped ?
+            localState == kDIALStatusStopped ?
                     "" : "  <link rel=\"run\" href=\"run\"/>\r\n",
             dial_data);
     ds_unlock(ds);
