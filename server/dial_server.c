@@ -490,10 +490,11 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
     char *host_header = {0,};
     char *origin_header = {0,};
     for (int i = 0; i < request_info->num_headers; ++i) {
-        if (!strcmp(request_info->http_headers[i].name, "Host")) {
+        if (!strcmp(request_info->http_headers[i].name, "Host")  ||
+            !strcmp(request_info->http_headers[i].name, "host")) {
             host_header = request_info->http_headers[i].value;
-        } else if (!strcmp(request_info->http_headers[i].name,
-                          "Origin")) {
+        } else if (!strcmp(request_info->http_headers[i].name, "Origin") ||
+                   !strcmp(request_info->http_headers[i].name, "origin")) {
             origin_header = request_info->http_headers[i].value;
         }
     }
