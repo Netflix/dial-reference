@@ -232,7 +232,7 @@ static void handle_app_status(struct mg_connection *conn,
     mg_printf(
             conn,
             "HTTP/1.1 200 OK\r\n"
-            "Content-Type: application/xml\r\n"
+            "Content-Type: text/xml\r\n"
             "Access-Control-Allow-Origin: %s\r\n"
             "\r\n"
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"

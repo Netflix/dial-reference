@@ -96,7 +96,7 @@ static void *request_handler(enum mg_event event,
         if (!strcmp(request_info->uri, "/dd.xml") &&
             !strcmp(request_info->request_method, "GET")) {
             mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-                      "Content-Type: application/xml\r\n"
+                      "Content-Type: text/xml\r\n"
                       "Application-URL: http://%s:%d/apps/\r\n"
                       "\r\n", ip_addr, dial_port);
             mg_printf(conn, ddxml, friendly_name, model_name, uuid);
