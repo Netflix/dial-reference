@@ -1,5 +1,8 @@
 "use strict";
 
+var colors  = require("colors/safe");
+var sprintf = require("sprintf-js").sprintf;
+
 function getParam(key) {
     var value;
     var args = process.argv.slice(2);
@@ -11,4 +14,19 @@ function getParam(key) {
     return value;
 }
 
-module.exports.getParam = getParam;
+function printTestInfo(test, msg) {
+    return console.log(sprintf("%-20s : %-s\n%-20s : %-s", "Test", test, "Description", msg));
+}
+
+function printSuccess() {
+    return console.log(colors.green("TEST PASSED\n"));
+}
+
+function printFailure(err) {
+    return console.log(colors.red(sprintf("%-20s : %-s\n", "TEST FAILED", err)));
+}
+
+module.exports.getParam       = getParam;
+module.exports.printTestInfo  = printTestInfo;
+module.exports.printSuccess   = printSuccess;
+module.exports.printFailure   = printFailure;

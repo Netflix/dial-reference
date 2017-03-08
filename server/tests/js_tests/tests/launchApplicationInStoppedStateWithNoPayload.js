@@ -11,7 +11,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Launch " + app + " application using DIAL server when the application is in STOPPED state and expect response code 201");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Launch " + app + " application using DIAL server when the application is in STOPPED state and expect response code 201");
       })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function stopAppIfNecessary(result) {
@@ -60,10 +60,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

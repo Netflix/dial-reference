@@ -9,7 +9,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Perform DIAL discovery and ensure that the server under test is discovered");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1) , "Perform DIAL discovery and ensure that the server under test is discovered");
       })
       .then(dial.discover)
       .then(function findServerInList(servers) {
@@ -24,10 +24,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.log("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

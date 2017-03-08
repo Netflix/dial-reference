@@ -44,7 +44,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Try to launch " + app + " application with excess payload and ensure DIAL server returns response code 413");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Try to launch " + app + " application with excess payload and ensure DIAL server returns response code 413");
       })
       .then(dial.launchApplication.bind(null, host, app, payload))
       .then(function (response) {
@@ -53,10 +53,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

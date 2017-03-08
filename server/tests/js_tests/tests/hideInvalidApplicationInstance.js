@@ -11,7 +11,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Try to hide an invalid instance of " + app + " application and expect status code 404");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Try to hide an invalid instance of " + app + " application and expect status code 404");
       })
       .then(dial.launchApplication.bind(null, host, app))
       .then(function (response) {
@@ -50,10 +50,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

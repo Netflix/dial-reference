@@ -7,13 +7,14 @@
     "url": "https://github.com/Netflix/dial-reference.git"
   },
   "main": "",
-  "scripts": {
-  },
+  "scripts": {},
   "author": "Shruti Ranganathan Jothi",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "q": "~1.4.1",
+    "colors": "^1.1.2",
     "node-ssdp": "^3.2.0",
-    "request": "^2.78.0"
+    "q": "~1.4.1",
+    "request": "^2.78.0",
+    "sprintf-js": "~1.0.3"
   }
 }

@@ -10,7 +10,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Launch an application that is not recognized by DIAL server and check for response code 404");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Launch an application that is not recognized by DIAL server and check for response code 404");
       })
       .then(dial.launchApplication.bind(null, host, "ApplicationNotRecognized"))
       .then(function (response) {
@@ -19,10 +19,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

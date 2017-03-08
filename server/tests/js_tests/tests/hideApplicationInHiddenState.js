@@ -11,7 +11,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Try to hide " + app + " when it is already in hidden state and expect response code 200 from the DIAL server");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Try to hide " + app + " when it is already in hidden state and expect response code 200 from the DIAL server");
       })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function hideApp(result) {
@@ -67,10 +67,10 @@ function test() {
       })
 
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

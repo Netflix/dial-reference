@@ -11,7 +11,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Try to stop invalid " + app + " application instance and check for DIAL server response code 404");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Try to stop invalid " + app + " application instance and check for DIAL server response code 404");
       })
       .then(dial.launchApplication.bind(null, host, app))
       .delay(timeToWaitForStateChange)
@@ -46,10 +46,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

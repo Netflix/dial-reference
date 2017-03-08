@@ -11,7 +11,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Stop " + app + " application when it is running and check for response code 200 from DIAL server ");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Stop " + app + " application when it is running and check for response code 200 from DIAL server ");
       })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function getCurrentAppState(result) {
@@ -59,10 +59,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 

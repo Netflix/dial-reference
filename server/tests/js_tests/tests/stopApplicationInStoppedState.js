@@ -12,7 +12,7 @@ function test() {
 
     return new Q()
       .then(function () {
-          console.log("TEST " + __filename + ": Try to stop " + app + " application using DIAL server when the application is already stopped and expect response code 200.");
+          utils.printTestInfo(__filename.slice(__dirname.length + 1), "Try to stop " + app + " application using DIAL server when the application is already stopped and expect response code 200.");
       })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function getCurrentAppState(result) {
@@ -86,10 +86,10 @@ function test() {
           }
       })
       .then(function () {
-          console.log("TEST PASSED");
+          utils.printSuccess()
       })
       .fail(function handleError(err) {
-          console.error("TEST FAILED " + err);
+          utils.printFailure(err);
       });
 }
 
