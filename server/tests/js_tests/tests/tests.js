@@ -2,6 +2,27 @@
 
 var Q = require("q");
 
+const argv    = require("yargs")
+    .usage("\nUsage: node " + __filename.slice(__dirname.length + 1) + "[options]")
+    .option("host", {
+        describe: "IP address of host on which DIAL server under test is running",
+        type: "string",
+        demand: true
+    })
+    .option("application", {
+        alias: "app",
+        describe: "Application to test",
+        type: "string",
+        demand: true
+    })
+    .option("timeToWaitForStateChange", {
+        alias: "ttw",
+        describe: "Time(ms) to wait between state changes before querying application status",
+        type: "string",
+        default: 5000
+    })
+    .help("help").alias("help", "h").argv;
+
 var discoverServerUnderTest                      = require("../tests/discoverServerUnderTest.js"),
     launchApplicationNotRecognized               = require("../tests/launchApplicationNotRecognized.js"),
     launchApplicationInRunningStateWithNoPayload = require("../tests/launchApplicationInRunningStateWithNoPayload.js"),

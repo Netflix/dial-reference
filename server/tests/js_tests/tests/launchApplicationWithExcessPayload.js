@@ -4,9 +4,24 @@ var dial      =   require("../libs/dialClient.js"),
     utils     =   require("../libs/utils.js"),
     Q         =   require("q");
 
+const argv    = require("yargs")
+    .usage("\nUsage: node " + __filename.slice(__dirname.length + 1) + "[options]")
+    .option("host", {
+        describe: "IP address of host on which DIAL server under test is running",
+        type: "string",
+        demand: true
+    })
+    .option("application", {
+        alias: "app",
+        describe: "Application to test",
+        type: "string",
+        demand: true
+    })
+    .help("help").alias("help", "h").argv;
+
 function test() {
-    var host = utils.getParam("host");
-    var app = utils.getParam("app");
+    var host = argv.host;
+    var app = argv.application;
 
     var payload = "key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&"
      + "key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&key=value&"

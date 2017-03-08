@@ -1,7 +1,7 @@
 "use strict";
 
-var colors  = require("colors/safe");
-var sprintf = require("sprintf-js").sprintf;
+const colors  = require("colors/safe");
+const sprintf = require("sprintf-js").sprintf;
 
 function getParam(key) {
     var value;
