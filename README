@@ -80,7 +80,7 @@ client will prompt you to select a server.
 --------------------------------------------------------------------------------
 NEW: Node.js tests for DIAL server 2.1
 --------------------------------------------------------------------------------
-Node.js tests to test DIAL server implementation are now available under
+Node.js tests to test DIAL server 2.1 implementation are now available under
 server/tests/js_tests. To run these tests againsts a DIAL server:
 
 1. Ensure that the DIAL server is discoverable from the test environment
@@ -92,21 +92,30 @@ The tests themselves are located inside the server/tests/js_tests/tests folder.
 The file tests.js is a batch runner and will run all the tests serially. It
 takes the following arguments:
 
-      host: <IP address of host in which DIAL server is running>
-      app: Name of the application to test against (eg: Netflix, YouTube)
-      timeToWaitForStateChange: Some of these tests wait for application state
-      changes before querying for application status. Default is 5000(ms)
+server/tests/js_tests/tests$ node tests.js
+
+Usage: node tests.js[options]
+
+Options:
+  --host                             IP address of host on which DIAL server
+                                     under test is running   [string] [required]
+  --application, --app               Application to test     [string] [required]
+  --timeToWaitForStateChange, --ttw  Time(ms) to wait between state changes
+                                     before querying application status
+                                                        [string] [default: 5000]
+  --help, -h                         Show help                         [boolean]
+
+
+To run each test independantly and not through tests.js, just call the
+appropriate test file name.
 
 Example:
-server/tests/js_tests/tests> node tests.js host=<ip of DIAL server>
-app="Netflix" timeToWaitForStateChange=2000
+server/tests/js_tests/tests$ node discoverServerUnderTest.js
 
-To run each test independantly and not through test.js, just call the
-appropriate test file name instead of test.js.
+Usage: node discoverServerUnderTest.js[options]
 
-Example:
-server/tests/js_tests/tests> node discoverServerUnderTest.js
-host=<ip of DIAL server> app="Netflix" timeToWaitForStateChange=2000
-
-Any application specific setup/requirements should be taken care of before
-running these tests.
+Options:
+  --host                IP address of host on which DIAL server under test is
+                        running                              [string] [required]
+  --application, --app  Application to test                  [string] [required]
+  --help, -h            Show help                                      [boolean]

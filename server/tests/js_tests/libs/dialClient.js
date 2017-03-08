@@ -65,8 +65,7 @@ function getApplicationStatus(host, app, clientDialVer) {
                       if(statusCode !== 200) {
                           return reject(new Error("Expected statusCode 200 while querying application status but got " + statusCode));
                       }
-                      // TODO: Remove application/xml from accepted types
-                      if(contentType.indexOf("text/xml") === -1 && contentType.indexOf("application/xml") === -1) {
+                      if(contentType.indexOf("text/xml") === -1) {
                           return reject(new Error("Expected MIME type 'text/xml' while querying application status but got " + contentType));
                       }
                       // Extract fields from body
@@ -121,8 +120,6 @@ function launchApplication(host, app, payload) {
               method: "POST",
               timeout: 6000,
               headers: {
-                  // TODO: Remove host header
-                  "Host" : appResourceUrl.split("http://")[1].split("/")[0],
                   "Content-Type" : "text/plain;charset=\"utf-8\""
               }
           };
@@ -162,9 +159,7 @@ function stopApplication(host, app) {
           var request = {
               url: appResourceUrl,
               method: "DELETE",
-              timeout: 6000,
-              // TODO: Remove host header
-              headers: {"Host" : appResourceUrl.split("http://")[1].split("/")[0]}
+              timeout: 6000
           };
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
@@ -193,9 +188,7 @@ function hideApplication(host, app) {
           var request = {
               url: appResourceUrl,
               method: "POST",
-              timeout: 6000,
-              // TODO: Remove host header
-              headers: {"Host" : appResourceUrl.split("http://")[1].split("/")[0]}
+              timeout: 6000
           };
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
@@ -218,9 +211,7 @@ function stopApplicationInstance(instanceUrl) {
           var request = {
               url: instanceUrl,
               method: "DELETE",
-              timeout: 6000,
-              // TODO: Remove host header
-              headers: {"Host" : instanceUrl.split("http://")[1].split("/")[0]}
+              timeout: 6000
           };
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
@@ -239,9 +230,7 @@ function hideApplicationInstance(instanceUrl) {
           var request = {
               url: instanceUrl,
               method: "POST",
-              timeout: 6000,
-              // TODO: Remove host header
-              headers: {"Host" : instanceUrl.split("http://")[1].split("/")[0]}
+              timeout: 6000
           };
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {

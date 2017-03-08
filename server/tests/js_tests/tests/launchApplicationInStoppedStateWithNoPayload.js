@@ -81,10 +81,10 @@ function test() {
           }
       })
       .then(function () {
-          utils.printSuccess()
+          utils.printTestSuccess()
       })
       .fail(function handleError(err) {
-          utils.printFailure(err);
+          utils.printTestFailure(err);
       });
 }
 
