@@ -52,6 +52,7 @@ function test() {
                           if(result.state !== "running") {
                               return Q.reject(new Error("Expected " + app + " app status to be running but the state was " + result.state));
                           }
+                          console.log("app was running");
                       })
                       .then(dial.hideApplication.bind(null, host, app))
                       .delay(timeToWaitForStateChange);
@@ -60,7 +61,9 @@ function test() {
                 .delay(timeToWaitForStateChange);
           }
       })
-      .then(dial.getApplicationStatus.bind(null, host, app))
+      .then(function () {
+          return dial.getApplicationStatus(host, app)
+      })
       .then(function checkAppStatus(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));

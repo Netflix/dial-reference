@@ -47,7 +47,7 @@ function getApplicationStatus(host, app, clientDialVer) {
     return new Q()
       .then(constructAppResourceUrl.bind(null, host, app))
       .then(function (appResourceUrl) {
-          appResourceUrl += clientDialVer === "2.1" ? "?clientDialVer='2.1'" : "";
+          appResourceUrl += clientDialVer === "2.1" ? "?clientDialVer=2.1" : "";
           return appResourceUrl;
       })
       .then(function (appResourceUrl) {

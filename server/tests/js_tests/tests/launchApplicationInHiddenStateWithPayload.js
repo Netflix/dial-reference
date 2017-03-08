@@ -63,7 +63,9 @@ function test() {
               }
           }
       })
-      .then(dial.getApplicationStatus.bind(null, host, app))
+      .then(function () {
+          return dial.getApplicationStatus(host, app)
+      })
       .then(function checkAppStatus(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Error retrieving current " + app + " application state"));
