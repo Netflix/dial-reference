@@ -5,6 +5,7 @@ const sprintf   = require("sprintf-js").sprintf;
 const winston   = require("winston");
 const moment    = require("moment");
 const keypress  = require("keypress");
+const Q         = require("q");
 
 const levels = { error: 0, warn: 1, info: 2, verbose: 3, debug: 4 };
 const transports = [
@@ -42,6 +43,18 @@ function fileFormatter(options) {
     return str;
 }
 
+function setLogLevel(level) {
+    winston.remove(winston.transports.Console);
+    return winston.add(winston.transports.Console, {
+        level: "debug",
+        name: "log_file",
+        filename: "js_tests_log.txt",
+        json: false,
+        formatter: fileFormatter,
+        options: { flags: "w" }
+    });
+}
+
 function ask(description) {
     return new Q.Promise(function (resolve, reject) {
         // make `process.stdin` begin emitting "keypress" events
@@ -49,7 +62,7 @@ function ask(description) {
         process.stdin.setRawMode(true);
         process.stdin.resume();
 
-        console.log(description);
+        winston.info(sprintf("[%-s] %-20s : %-s", moment().format("YYYY-MM-DDTHH:mm:ssZ"), "MANUAL STEP", description));
 
         // listen for the "keypress" event
         process.stdin.on("keypress", function (ch, key) {
@@ -82,7 +95,14 @@ function printDebug(msg) {
     winston.debug(sprintf("[%-s] %-20s : %-s", moment().format("YYYY-MM-DDTHH:mm:ssZ"), "DEBUG", msg));
 }
 
+function printInfo(msg) {
+    winston.info(sprintf("[%-s] %-20s : %-s", moment().format("YYYY-MM-DDTHH:mm:ssZ"), "INFO", msg));
+}
+
 module.exports.printTestInfo      = printTestInfo;
 module.exports.printTestSuccess   = printTestSuccess;
 module.exports.printTestFailure   = printTestFailure;
 module.exports.printDebug         = printDebug;
+module.exports.printInfo          = printInfo;
+module.exports.ask                = ask;
+module.exports.setLogLevel        = setLogLevel;
