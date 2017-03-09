@@ -34,6 +34,9 @@ function test() {
       .then(function () {
           utils.printTestInfo(__filename.slice(__dirname.length + 1), "Launch " + app + " with payload using DIAL server when application is already running and check for response code 201");
       })
+      .then(function () {
+          utils.printDebug("Querying application state");
+      })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
@@ -43,44 +46,61 @@ function test() {
       })
 
       .then(function startAppIfNotRunning(state) {
+          utils.printDebug("Application is in " + state + " state");
           if(state !== "running") {
-              return dial.launchApplication(host, app)
+              return new Q()
+                .then(function () {
+                    utils.printDebug("Launching application ..");
+                    return dial.launchApplication(host, app);
+                })
                 .then(function (response) {
                     if(response.statusCode !== 201) {
                         return Q.reject(new Error("Error launching " + app + " application. Expected status code 201 from DIAL server but got " + response.statusCode));
                     }
+                })
+                .then(function () {
+                    utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change to happen");
+                })
+                .delay(timeToWaitForStateChange)
+                .then(function () {
+                    utils.printDebug("Querying application state");
+                    return dial.getApplicationStatus(host, app)
+                })
+                .then(function getCurrentAppState(result) {
+                    if(!result || !result.state) {
+                        return Q.reject(new Error("Error retrieving current " + app + " application state"));
+                    }
+                    utils.printDebug("Application is in " + result.state + " state");
+                    if(result.state !== "running") {
+                        return Q.reject(new Error("Expected " + app + " application to be in running state, but querying state returned state as" + result.state));
+                    }
                 });
           }
       })
-      .delay(timeToWaitForStateChange)
+
       .then(function () {
+          utils.printDebug("Launching application with payload..");
+      })
+      .then(dial.launchApplication.bind(null, host, app, "key1=val1&key2=val2"))
+      .then(function (response) {
+          if(response.statusCode !== 201) {
+              return Q.reject(new Error("Error launching " + app + " application when it was already running. Expected status code 201 from DIAL server but got " + response.statusCode));
+          }
+      })
+      .then(function () {
+          utils.printDebug("Querying application state");
           return dial.getApplicationStatus(host, app)
       })
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Error retrieving current " + app + " application state"));
           }
+          utils.printDebug("Application is in " + result.state + " state");
           if(result.state !== "running") {
               return Q.reject(new Error("Expected " + app + " application to be in running state, but querying state returned state as" + result.state));
           }
       })
 
-      .then(dial.launchApplication.bind(null, host, app, "key1=val1"))
-      .then(function (response) {
-          if(response.statusCode !== 201) {
-              return Q.reject(new Error("Error launching " + app + " application when it was already running. Expected status code 201 from DIAL server but got " + response.statusCode));
-          }
-      })
-      .delay(timeToWaitForStateChange) // Allow time for restart if application supports sending new params
-      .then(dial.getApplicationStatus.bind(null, host, app))
-      .then(function getCurrentAppState(result) {
-          if(!result || !result.state) {
-              return Q.reject(new Error("Error retrieving current " + app + " application state"));
-          }
-          if(result.state !== "running") {
-              return Q.reject(new Error("Expected " + app + " application to be in running state, but querying state returned state as" + result.state));
-          }
-      })
       .then(function () {
           utils.printTestSuccess()
       })

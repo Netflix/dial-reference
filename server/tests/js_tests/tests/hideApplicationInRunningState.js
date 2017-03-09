@@ -19,7 +19,7 @@ const argv    = require("yargs")
     })
     .option("timeToWaitForStateChange", {
         alias: "ttw",
-        describe: "Time(ms) to wait between state changes before querying application status",
+        describe: "Time(ms) to wait between state changes before Querying application state",
         type: "string",
         default: 5000
     })
@@ -34,6 +34,9 @@ function test() {
       .then(function () {
           utils.printTestInfo(__filename.slice(__dirname.length + 1), "Hide " + app + " application when it is running and expect response code 200");
       })
+      .then(function () {
+          utils.printDebug("Querying application state ..");
+      })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
@@ -43,38 +46,60 @@ function test() {
       })
 
       .then(function startAppIfNotRunning(state) {
+          utils.printDebug("Application is in " + state + " state");
           if(state !== "running") {
-              return dial.launchApplication(host, app)
+              return new Q()
+                .then(function () {
+                    utils.printDebug("Launching application ..");
+                    return dial.launchApplication(host, app);
+                })
                 .then(function (response) {
                     if(response.statusCode !== 201) {
                         return Q.reject(new Error("Could not launch " + app + " application. Expected status code 201 but got " + response.statusCode));
                     }
-                });
-          }
-      })
-      .delay(timeToWaitForStateChange)
-      .then(dial.getApplicationStatus.bind(null, host, app))
-      .then(function getCurrentAppState(result) {
-          if(!result || !result.state) {
-              return Q.reject(new Error("Could not retrieve current " + app + " application state"));
-          }
-          if(result.state !== "running") {
-              return Q.reject(new Error("Expected " + app + " state to be running but state was " + result.state));
+                })
+                .then(function () {
+                    utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change to happen");
+                })
+                .delay(timeToWaitForStateChange)
+                .then(function () {
+                    utils.printDebug("Querying application state ..");
+                })
+                .then(dial.getApplicationStatus.bind(null, host, app))
+                .then(function getCurrentAppState(result) {
+                    if(!result || !result.state) {
+                        return Q.reject(new Error("Could not retrieve current " + app + " application state"));
+                    }
+                    utils.printDebug("Application is in " + result.state + " state");
+                    if(result.state !== "running") {
+                        return Q.reject(new Error("Expected " + app + " state to be running but state was " + result.state));
+                    }
+                })
           }
       })
 
+      .then(function () {
+          utils.printDebug("Hiding application ..");
+      })
       .then(dial.hideApplication.bind(null, host, app))
       .then(function (response) {
           if(response.statusCode !== 200) {
               return Q.reject(new Error("Error hiding " + app + " application. Expected status code 200 but got " + response.statusCode));
           }
       })
+      .then(function () {
+          utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change to happen");
+      })
       .delay(timeToWaitForStateChange)
+      .then(function () {
+          utils.printDebug("Querying application state ..");
+      })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
+          utils.printDebug("Application is in " + result.state + " state");
           if(result.state !== "hidden") {
               return Q.reject(new Error("Expected " + app + " state to be hidden but state was " + result.state));
           }

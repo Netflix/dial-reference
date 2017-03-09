@@ -34,59 +34,110 @@ function test() {
       .then(function () {
           utils.printTestInfo(__filename.slice(__dirname.length + 1), "Stop " + app + " application using DIAL server when the application is in hidden state and expect response code 200");
       })
+      .then(function () {
+          utils.printDebug("Querying application state ..");  
+      })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function hideApp(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
+          utils.printDebug("Application is in " + result.state + " state");
           if(result.state !== "hidden") {
               if(result.state === "stopped") {
                   // Launch and hide app
-                  return dial.launchApplication(host, app)
+                  return new Q()
+                      .then(function () {
+                          utils.printDebug("Launching application ..");
+                          return dial.launchApplication(host, app);
+                      })
+                      .then(function () {
+                          utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change");
+                      })
                       .delay(timeToWaitForStateChange)
+                      .then(function () {
+                          utils.printDebug("Querying application state ..");
+                      })
                       .then(dial.getApplicationStatus.bind(null, host, app))
                       .then(function getAppState(result) {
                           if(!result || !result.state) {
                               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
                           }
+                          utils.printDebug("Application is in " + result.state + " state");
                           if(result.state !== "running") {
                               return Q.reject(new Error("Expected " + app + " state to be running but state was " + result.state));
                           }
                       })
+                      .then(function () {
+                          utils.printDebug("Hiding application ..");
+                      })
                       .then(dial.hideApplication.bind(null, host, app))
+                      .then(function () {
+                          utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change");
+                      })
                       .delay(timeToWaitForStateChange)
+                      .then(function () {
+                          utils.printDebug("Querying application state ..");
+                          return dial.getApplicationStatus(host, app)
+                      })
+                      .then(function checkAppStatus(result) {
+                          if(!result || !result.state) {
+                              return Q.reject(new Error("Could not retrieve current " + app + " application state"));
+                          }
+                          utils.printDebug("Application is in " + result.state + " state");
+                          if(result.state !== "hidden") {
+                              return Q.reject(new Error("Expected " + app + " app state to be hidden but the state was " + result.state));
+                          }
+                      })
 
               }
-              return dial.hideApplication(host, app)
-                .delay(timeToWaitForStateChange);
-          }
-      })
-      .then(function () {
-          return dial.getApplicationStatus(host, app)
-      })
-      .then(function checkAppStatus(result) {
-          if(!result || !result.state) {
-              return Q.reject(new Error("Could not retrieve current " + app + " application state"));
-          }
-          if(result.state !== "hidden") {
-              return Q.reject(new Error("Expected " + app + " app state to be hidden but the state was " + result.state));
+              return new Q()
+                .then(function () {
+                    utils.printDebug("Hiding application ..");
+                    return dial.hideApplication(host, app);
+                })
+                .then(function () {
+                    utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change");
+                })
+                .delay(timeToWaitForStateChange)
+                .then(function () {
+                    utils.printDebug("Querying application state ..");
+                    return dial.getApplicationStatus(host, app)
+                })
+                .then(function checkAppStatus(result) {
+                    if(!result || !result.state) {
+                        return Q.reject(new Error("Could not retrieve current " + app + " application state"));
+                    }
+                    utils.printDebug("Application is in " + result.state + " state");
+                    if(result.state !== "hidden") {
+                        return Q.reject(new Error("Expected " + app + " app state to be hidden but the state was " + result.state));
+                    }
+                });
           }
       })
 
+      .then(function () {
+          utils.printDebug("Stopping application ..");
+      })
       .then(dial.stopApplication.bind(null, host, app))
       .then(function (response) {
           if(response.statusCode !== 200) {
               return Q.reject(new Error("Tried to stop " + app + ". Expected statusCode: 200 but got " + response.statusCode));
           }
       })
+      .then(function () {
+          utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change");
+      })
       .delay(timeToWaitForStateChange)
       .then(function () {
+          utils.printDebug("Querying application state ..");
           return dial.getApplicationStatus(host, app)
       })
       .then(function checkAppStatus(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
+          utils.printDebug("Application is in " + result.state + " state");
           if(result.state !== "stopped") {
               return Q.reject(new Error("Expected " + app + " app state to be stopped but the state was " + result.state));
           }

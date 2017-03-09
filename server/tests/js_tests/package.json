@@ -12,6 +12,7 @@
   "license": "BSD-2-Clause",
   "dependencies": {
     "colors": "^1.1.2",
+    "keypress": "^0.2.1",
     "moment": "^2.17.1",
     "node-ssdp": "^3.2.0",
     "q": "~1.4.1",

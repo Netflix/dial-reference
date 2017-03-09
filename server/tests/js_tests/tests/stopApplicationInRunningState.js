@@ -34,6 +34,9 @@ function test() {
       .then(function () {
           utils.printTestInfo(__filename.slice(__dirname.length + 1), "Stop " + app + " application when it is running and check for response code 200 from DIAL server ");
       })
+      .then(function () {
+          utils.printDebug("Querying application state ..");
+      })
       .then(dial.getApplicationStatus.bind(null, host, app))
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
@@ -43,42 +46,60 @@ function test() {
       })
 
       .then(function startAppIfNotRunning(state) {
+          utils.printDebug("Application is in " + state + " state");
           if(state !== "running") {
-              return dial.launchApplication(host, app)
+              return new Q()
+                .then(function () {
+                    utils.printDebug("Launching application ..");
+                    return dial.launchApplication(host, app);
+                })
                 .then(function (response) {
                     if(response.statusCode !== 201) {
                         return Q.reject("Error launching " + app + " application. Expected status code 201 but got " + response.statusCode);
                     }
+                })
+                .then(function () {
+                    utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change to happen");
+                })
+                .delay(timeToWaitForStateChange)
+                .then(function () {
+                    utils.printDebug("Querying application state ..");
+                    return dial.getApplicationStatus(host, app)
+                })
+                .then(function getCurrentAppState(result) {
+                    if(!result || !result.state) {
+                        return Q.reject(new Error("Error retrieving current " + app + " application state"));
+                    }
+                    utils.printDebug("Application is in " + result.state + " state");
+                    if(result.state !== "running") {
+                        return Q.reject(new Error("Expected " + app + " state to be running but querying application state returned " + result.state));
+                    }
                 });
           }
       })
-      .delay(timeToWaitForStateChange)
-      .then(function () {
-          return dial.getApplicationStatus(host, app)
-      })
-      .then(function getCurrentAppState(result) {
-          if(!result || !result.state) {
-              return Q.reject(new Error("Error retrieving current " + app + " application state"));
-          }
-          if(result.state !== "running") {
-              return Q.reject(new Error("Expected " + app + " state to be running but querying application state returned " + result.state));
-          }
-      })
 
+      .then(function () {
+          utils.printDebug("Stopping application ..");
+      })
       .then(dial.stopApplication.bind(null, host, app))
       .then(function (response) {
           if(response.statusCode !== 200) {
               return Q.reject("Error stopping " + app + " application. Expected status code 200 but got " + response.statusCode);
           }
       })
+      .then(function () {
+          utils.printDebug("Wait for " + timeToWaitForStateChange + " ms for state change to happen");
+      })
       .delay(timeToWaitForStateChange)
       .then(function () {
+          utils.printDebug("Querying application state ..");
           return dial.getApplicationStatus(host, app)
       })
       .then(function getCurrentAppState(result) {
           if(!result || !result.state) {
               return Q.reject(new Error("Error retrieving current " + app + " application state"));
           }
+          utils.printDebug("Application is in " + result.state + " state");
           if(result.state !== "stopped") {
               return Q.reject(new Error("Expected " + app + " state to be stopped but querying application state returned " + result.state));
           }

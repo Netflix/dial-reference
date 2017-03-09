@@ -1,9 +1,10 @@
 "use strict";
 
-const colors  = require("colors/safe");
-const sprintf = require("sprintf-js").sprintf;
-const winston = require("winston");
-const moment  = require("moment");
+const colors    = require("colors/safe");
+const sprintf   = require("sprintf-js").sprintf;
+const winston   = require("winston");
+const moment    = require("moment");
+const keypress  = require("keypress");
 
 const levels = { error: 0, warn: 1, info: 2, verbose: 3, debug: 4 };
 const transports = [
@@ -14,7 +15,7 @@ const transports = [
     new (winston.transports.File)({
         level: "debug",
         name: "log_file",
-        filename: "log.txt",
+        filename: "js_tests_log.txt",
         json: false,
         formatter: fileFormatter,
         options: { flags: "w" }
@@ -39,6 +40,29 @@ function fileFormatter(options) {
     let str = options.message;
 
     return str;
+}
+
+function ask(description) {
+    return new Q.Promise(function (resolve, reject) {
+        // make `process.stdin` begin emitting "keypress" events
+        keypress(process.stdin);
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+
+        console.log(description);
+
+        // listen for the "keypress" event
+        process.stdin.on("keypress", function (ch, key) {
+            if (key && key.name === "return") {
+                process.stdin.pause();
+                return resolve();
+            }
+            if (key && key.name === "backspace") {
+                process.stdin.pause();
+                return reject("User marked the step as FAILED");
+            }
+        });
+    });
 }
 
 function printTestInfo(testFile, description) {
