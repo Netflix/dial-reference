@@ -26,15 +26,20 @@ function test() {
       .then(function () {
           utils.printTestInfo(__filename.slice(__dirname.length + 1) , "Perform DIAL discovery and ensure that the server under test is discovered");
       })
-      .then(dial.discover)
+      .then(function discover() {
+          utils.printDebug("Performing discovery ..");
+          return dial.discover();
+      })
       .then(function findServerInList(servers) {
           var found = false;
           servers.forEach(function (server) {
               if(server.host === testServer) {
+                  utils.printDebug("Found " + server.host + " in discovered list of servers");
                   found = true;
               }
           });
           if(!found) {
+              utils.printDebug("Did not find " + testServer + " in discovered list of servers");
               return Q.reject(new Error("DIAL client was not able to discover the server under test : " + testServer));
           }
       })

@@ -119,3 +119,6 @@ Options:
                         running                              [string] [required]
   --application, --app  Application to test                  [string] [required]
   --help, -h            Show help                                      [boolean]
+
+Log file of test run is written in log.txt in the server/tests/js_tests/tests 
+folder.

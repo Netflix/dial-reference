@@ -39,25 +39,36 @@ function test() {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
+          utils.printDebug("Application status is " + result.state);
           if(result.state !== "hidden") {
               if(result.state === "stopped") {
                   // Launch and hide app
                   return dial.launchApplication(host, app)
+                      .then(function () {
+                          utils.printDebug("Requested server to launch application ..");
+                      })
                       .delay(timeToWaitForStateChange)
                       .then(dial.getApplicationStatus.bind(null, host, app))
                       .then(function checkAppStatus(result) {
                           if(!result || !result.state) {
                               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
                           }
+                          utils.printDebug("Application status is " + result.state);
                           if(result.state !== "running") {
                               return Q.reject(new Error("Expected " + app + " app status to be running but the state was " + result.state));
                           }
-                          console.log("app was running");
+                      })
+                      .then(function () {
+                          utils.printDebug("Hide application ..");
                       })
                       .then(dial.hideApplication.bind(null, host, app))
                       .delay(timeToWaitForStateChange);
               }
-              return dial.hideApplication(host, app)
+              return new Q()
+                .then(function () {
+                    utils.printDebug("Hide application ..");
+                    return dial.hideApplication(host, app);
+                })
                 .delay(timeToWaitForStateChange);
           }
       })
@@ -68,11 +79,15 @@ function test() {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
+          utils.printDebug("Application status is now " + result.state);
           if(result.state !== "hidden") {
               return Q.reject(new Error("Expected " + app + " app status to be hidden but the state was " + result.state));
           }
       })
 
+      .then(function () {
+          utils.printDebug("Hide application ..");
+      })
       .then(dial.hideApplication.bind(null, host, app))
       .then(function (response) {
           if(response.statusCode !== 200) {
@@ -85,6 +100,7 @@ function test() {
           if(!result || !result.state) {
               return Q.reject(new Error("Could not retrieve current " + app + " application state"));
           }
+          utils.printDebug("Application status is " + result.state);
           if(result.state !== "hidden") {
               return Q.reject(new Error("Expected " + app + " app status to be hidden but the state was " + result.state));
           }
