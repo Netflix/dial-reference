@@ -76,10 +76,10 @@ DIALData *retrieve_dial_data(char *app_name) {
     char value[256];
     while (fscanf(f, "%255s %255s\n", key, value) != EOF) {
         DIALData *newNode = (DIALData *) malloc(sizeof(DIALData));
-        newNode->key = (char *) malloc(strlen(key));
-        strcpy(newNode->key, key);
-        newNode->value = (char *) malloc(strlen(value));
-        strcpy(newNode->value, value);
+        newNode->key = (char *) calloc(1, strlen(key));
+        strncpy(newNode->key, key, strlen(key));
+        newNode->value = (char *) calloc(1, strlen(value));
+        strncpy(newNode->value, value, strlen(value));
         newNode->next = result;
         result = newNode;
     }
