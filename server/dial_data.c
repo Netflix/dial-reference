@@ -41,7 +41,7 @@ void set_dial_data_dir(const char *data_dir) {
 /**
  * Returns the path where data is stored for the given app.
  */
-static char* getAppPath(char app_name[]) {
+static char* getAppPath(char *app_name) {
     size_t name_size = strlen(app_name) + sizeof(dial_data_dir) + 1;
     char* filename = (char*) malloc(name_size);
     filename[0] = 0;
@@ -57,6 +57,7 @@ void store_dial_data(char app_name[], DIALData *data) {
         printf("Cannot open DIAL data output file: %s\n", filename);
         exit(1);
     }
+    free(filename);
     for (DIALData *first = data; first != NULL; first = first->next) {
         fprintf(f, "%s %s\n", first->key, first->value);
     }
@@ -66,6 +67,7 @@ void store_dial_data(char app_name[], DIALData *data) {
 DIALData *retrieve_dial_data(char *app_name) {
     char* filename = getAppPath(app_name);
     FILE *f = fopen(filename, "r");
+    free(filename);
     if (f == NULL) {
         return NULL; // no dial data found, that's fine
     }
