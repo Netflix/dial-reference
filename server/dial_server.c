@@ -188,6 +188,7 @@ static void handle_app_status(struct mg_connection *conn,
     double clientVersion = 0.0;
     if (clientVersionStr){
         clientVersion = atof(clientVersionStr);
+        free(clientVersionStr);
     }
     
     ds_lock(ds);
@@ -384,6 +385,7 @@ static void handle_dial_data(struct mg_connection *conn,
 
     app->dial_data = parse_params(body);
     store_dial_data(app->name, app->dial_data);
+    free(app->dial_data);
 
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
               "Access-Control-Allow-Origin: %s\r\n"
