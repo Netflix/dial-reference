@@ -1,6 +1,18 @@
---------------------------------------------------------------------------------
-Building the DIAL server
---------------------------------------------------------------------------------
+# DIAL 
+
+
+<div align="center">
+  <img src="https://d2640ba2-a-c2dc72bd-s-sites.googlegroups.com/a/dial-multiscreen.org/dial/home/dial-icon.png?attachauth=ANoY7cr5UqoJK0l_igjP6UR00xVd51_0WW3flff7HsLb5tsJfASpJJeNY5AMTs_5CYqqspoLOzYTy8ep8_aXzmLFps9-UIFpkepxOwv5m2JeIWl3Rf-9KSDUI12nYakfHmQY9PThoIqJNwom9BO3DWDX_lhDHU55JWJS427P5UjpoiR3N2p02vnpR5ABHNBpTGfQnKkHvZHpXskH6J5hJ6LRg1rn2Jx0SA%3D%3D&attredirects=0"><br><br>
+</div>
+
+**DI**scovery **A**nd **L**aunch—is a simple protocol that second-screen devices can use to discover and launch apps on first-screen devices. 
+
+[DIAL page](http://www.dial-multiscreen.org/) |
+[DIAL protocol spec](http://www.dial-multiscreen.org/dial-protocol-specification)
+
+
+
+## Building the DIAL server
 1) Define the TARGET environment variable to point to the CC compiler prefix
    for your target platform.
 
@@ -10,17 +22,13 @@ Building the DIAL server
    For example:
    TARGET=/usr/local/i686-DIAL-EXAMPLE/bin/i686-DIAL-EXAMPLE make
 
---------------------------------------------------------------------------------
-Running the DIAL server
---------------------------------------------------------------------------------
+### Running the DIAL server
 The DIAL server should be started as a service, after the platform's networking
 has been initialized, and it should remain running at all times (a daemon
 process in the system).
 
 
---------------------------------------------------------------------------------
-Building the DIAL client
---------------------------------------------------------------------------------
+## Building the DIAL client
 The DIAL client is a standalone C++ console application you can use to test
 a running DIAL server implementation on your device. Unlike the server, which
 is built for, and meant to run on your device, the client is meant to run on
@@ -37,18 +45,14 @@ header and library locations. In most cases, you can omit the TARGET define.
 Note: the -rpath argument passed to LDFLAGS specifies the libcurl location
 to the runtime linker.
 
---------------------------------------------------------------------------------
-Running the DIAL client in interactive (menu) mode
---------------------------------------------------------------------------------
+### Running the DIAL client in interactive (menu) mode
 1) The DIAL client application must be running in the same subnet as the
    DIAL server.
 
 2) Start the client: ./dialclient (or ./dialclient -m)
    The on-screen menu will list all available actions.
 
---------------------------------------------------------------------------------
-Running the DIAL client in conformance test (non-interactive) mode
---------------------------------------------------------------------------------
+### Running the DIAL client in conformance test (non-interactive) mode
 1) The DIAL client application must be running in the same subnet as the
    DIAL server.
 
@@ -61,9 +65,7 @@ Running the DIAL client in conformance test (non-interactive) mode
       ./dialclient_input.txt
       ./report.html
 
---------------------------------------------------------------------------------
-DIAL client Usage
---------------------------------------------------------------------------------
+## DIAL client Usage
 When running the DIAL client, you have the following options
 usage: dialclient <option>
 
@@ -77,9 +79,7 @@ Option Parameter          Description
 If you do not provide an ip_address and multiple servers are discovered, the
 client will prompt you to select a server.
 
---------------------------------------------------------------------------------
-NEW: Node.js tests for DIAL server 2.1
---------------------------------------------------------------------------------
+## NEW: Node.js tests for DIAL server 2.1
 Node.js tests to test DIAL server 2.1 implementation are now available under
 server/tests/js_tests. To run these tests againsts a DIAL server:
 
