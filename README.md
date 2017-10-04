@@ -18,10 +18,10 @@
 
 
 2) Run make, passing in your TARGET value.
-
+```
    For example:
    TARGET=/usr/local/i686-DIAL-EXAMPLE/bin/i686-DIAL-EXAMPLE make
-
+```
 ### Running the DIAL server
 The DIAL server should be started as a service, after the platform's networking
 has been initialized, and it should remain running at all times (a daemon
@@ -67,6 +67,7 @@ to the runtime linker.
 
 ## DIAL client Usage
 When running the DIAL client, you have the following options
+```
 usage: dialclient <option>
 
 Option Parameter          Description
@@ -75,7 +76,7 @@ Option Parameter          Description
  -o     filename           Reporter output file (./report.html)
  -i     filename           Input File (./dialclient_input.txt)
  -a     ip_address         IP addr of DIAL server (used for conformance testing)
-
+```
 If you do not provide an ip_address and multiple servers are discovered, the
 client will prompt you to select a server.
 
@@ -91,7 +92,7 @@ server/tests/js_tests. To run these tests againsts a DIAL server:
 The tests themselves are located inside the server/tests/js_tests/tests folder.
 The file tests.js is a batch runner and will run all the tests serially. It
 takes the following arguments:
-
+```
 server/tests/js_tests/tests$ node tests.js
 
 Usage: node tests.js[options]
@@ -104,11 +105,11 @@ Options:
                                      before querying application status
                                                         [string] [default: 5000]
   --help, -h                         Show help                         [boolean]
-
+```
 
 To run each test independantly and not through tests.js, just call the
 appropriate test file name.
-
+```
 Example:
 server/tests/js_tests/tests$ node discoverServerUnderTest.js
 
@@ -119,6 +120,6 @@ Options:
                         running                              [string] [required]
   --application, --app  Application to test                  [string] [required]
   --help, -h            Show help                                      [boolean]
-
+```
 Log file of test run is written in js_tests_log.txt in the
 server/tests/js_tests/tests folder.
