@@ -87,3 +87,15 @@ DIALData *retrieve_dial_data(char *app_name) {
     return result;
 }
 
+void free_dial_data(DIALData **dialData)
+{
+    DIALData *curNode=NULL;
+    while (*dialData != NULL) {
+        curNode = *dialData;
+        *dialData =curNode->next;
+
+        free(curNode->key);
+        free(curNode->value);
+        free(curNode);
+    }
+}

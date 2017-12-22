@@ -383,9 +383,11 @@ static void handle_dial_data(struct mg_connection *conn,
         return;
     }
 
+
+    free_dial_data(&app->dial_data);
+
     app->dial_data = parse_params(body);
     store_dial_data(app->name, app->dial_data);
-    free(app->dial_data);
 
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
               "Access-Control-Allow-Origin: %s\r\n"

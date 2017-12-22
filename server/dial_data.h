@@ -60,4 +60,6 @@ DIALData *retrieve_dial_data(char *app_name);
 
 void set_dial_data_dir(const char *data_dir);
 
+void free_dial_data(DIALData **dialData);
+
 #endif /* SRC_SERVER_DIAL_DATA_H_ */
