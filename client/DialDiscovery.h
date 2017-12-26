@@ -28,6 +28,7 @@
 
 #include "DialServer.h"
 #include <map>
+#include <pthread.h>
 
 using namespace std;
 
@@ -81,9 +82,6 @@ private:
     void processServer(char *pResponse);
     void cleanServerList();
     void resetDiscovery();
-
-    pthread_t _mcastThread;
-    pthread_t _responseThread;
 
     typedef map<string, DialServer*> ServerMap;
     ServerMap mServerMap;

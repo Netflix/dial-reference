@@ -3,7 +3,7 @@ CC=$(TARGET)gcc
 .PHONY: clean
 .DEFAULT_GOAL=all
 
-OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o LinuxInterfaces.o
+OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o
 HEADERS := $(wildcard *.h)
 
 %.c: $(HEADERS)
@@ -15,10 +15,12 @@ HEADERS := $(wildcard *.h)
 all: dialserver test
 
 nf_callbacks_lib: nf_callbacks.o
-	$(CC) -Wall -Werror -g nf_callbacks.o -o libnfCallbacks.so --shared
+#	$(CC) -Wall -Werror -g nf_callbacks.o -o libnfCallbacks.so --shared
+	$(CC) -Wall -Werror -Wl,-undefined -Wl,dynamic_lookup -g nf_callbacks.o -o libnfCallbacks.so --shared
+
 
 dialserver: nf_callbacks_lib $(OBJS)
-	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver
+	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -L. -lnfCallbacks -o dialserver
 
 test:
 	make -C tests

@@ -65,7 +65,6 @@ public:
         string &outputFile );
 private:
     DialConformance();
-    DialServer*                 _pServer;
     static DialConformance*     sConformance;
     DialClientInput             _input;
 

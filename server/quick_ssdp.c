@@ -35,6 +35,13 @@
 #include "mongoose.h"
 #include <stdbool.h>
 
+#ifdef __APPLE__
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#endif
+
+
 // TODO: Partners should define this port
 #define SSDP_PORT (56790)
 static char gBuf[4096];
@@ -108,6 +115,30 @@ static void *request_handler(enum mg_event event,
     return NULL;
 }
 
+#ifdef __APPLE__
+static void get_local_address() {
+    struct ifaddrs* iflist;
+    char *if_name= "en0";
+    char buf[INET6_ADDRSTRLEN];
+
+    if (getifaddrs(&iflist) == 0) {
+        for (struct ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
+          if (strcmp(cur->ifa_name, if_name) == 0) {
+            if ((cur->ifa_addr->sa_family == AF_LINK) && cur->ifa_addr) {
+                struct sockaddr_dl* sdl = (struct sockaddr_dl*)cur->ifa_addr;
+                memcpy(hw_addr, LLADDR(sdl), sdl->sdl_alen);
+            }
+
+            if (cur->ifa_addr->sa_family == AF_INET) {
+              void *tmp = &((struct sockaddr_in *)cur->ifa_addr)->sin_addr;
+              strcpy(ip_addr, inet_ntop(cur->ifa_addr->sa_family, tmp, buf, sizeof(buf)));
+            }
+          }
+        }
+        freeifaddrs(iflist);
+    }
+}
+#else
 static void get_local_address() {
     struct ifconf ifc;
     char buf[4096];
@@ -152,6 +183,7 @@ static void get_local_address() {
     }
     close(s);
 }
+#endif
 
 static void handle_mcast() {
     int s, one = 1, bytes;
@@ -174,8 +206,9 @@ static void handle_mcast() {
         exit(1);
     }
     saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = inet_addr("239.255.255.250");
+    saddr.sin_addr.s_addr = INADDR_ANY; //inet_addr("239.255.255.250");
     saddr.sin_port = htons(1900);
+
     if (-1 == bind(s, (struct sockaddr *)&saddr, sizeof(saddr))) {
         perror("bind");
         exit(1);
@@ -211,7 +244,7 @@ static void handle_mcast() {
                 printf("\n##### End of DROP #######\n");
 #endif
                 continue;
-            }
+        }
         printf("Sending SSDP reply to %s:%d\n",
                inet_ntoa(saddr.sin_addr), ntohs(saddr.sin_port));
         if (-1 == sendto(s, send_buf, send_size, 0, (struct sockaddr *)&saddr, addrlen)) {

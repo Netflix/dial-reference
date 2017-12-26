@@ -1,10 +1,13 @@
 #ifndef LINUXINTERFACES_H_
 #define LINUXINTERFACES_H_
 
-#include <arpa/inet.h>
-#include <dirent.h>
+#ifndef __APPLE__
 #include <linux/limits.h>
 #include <linux/wireless.h>
+#endif
+
+#include <arpa/inet.h>
+#include <dirent.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <sys/ioctl.h>

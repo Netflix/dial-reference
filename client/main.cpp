@@ -136,7 +136,7 @@ static void runConformance()
         else 
         {
             printf("DIAL server not found\n");
-            printf("%Zu available server(s): \n", list.size());
+            printf("%zu available server(s): \n", list.size());
             printServerList(list);
         }
     }

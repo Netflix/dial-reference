@@ -226,7 +226,7 @@ int DialServer::getStatus(
 
     if (!status) return 0;
     ATRACE("Body: %s\n", responseBody.c_str());
-    unsigned found = responseBody.find("href=");
+    size_t found = responseBody.find("href=");
     if( found != string::npos )
     {
         // The start of href is after href= and the quote

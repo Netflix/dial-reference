@@ -800,7 +800,9 @@ static void worker_thread(struct mg_context *ctx) {
   // required in the DIAL specification.
   int buf_size = MAX_REQUEST_SIZE;
 
+#ifndef __APPLE__
   pthread_setname_np( pthread_self(), __func__);
+#endif
   conn = (struct mg_connection *) calloc(1, sizeof(*conn) + buf_size);
   conn->buf_size = buf_size;
   conn->buf = (char *) (conn + 1);
@@ -860,7 +862,9 @@ static void produce_socket(struct mg_context *ctx, const struct socket *sp) {
 static void master_thread(struct mg_context *ctx) {
   struct socket accepted;
 
+#ifndef __APPLE__
   pthread_setname_np( pthread_self(), __func__);
+#endif
   socklen_t sock_len = sizeof(accepted.local_addr);
   memcpy(&accepted.local_addr, &ctx->local_address, sock_len);
 

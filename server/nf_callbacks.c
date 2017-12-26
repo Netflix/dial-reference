@@ -8,6 +8,7 @@
 #include <regex.h>
 #include "dial_server.h"
 #include "url_lib.h"
+#include "nf_callbacks.h"
 
 extern char *spAppNetflix;
 extern char spNetflix[];
