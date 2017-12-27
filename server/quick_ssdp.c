@@ -206,7 +206,11 @@ static void handle_mcast() {
         exit(1);
     }
     saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = INADDR_ANY; //inet_addr("239.255.255.250");
+#ifdef __APPLE__
+    saddr.sin_addr.s_addr = INADDR_ANY;
+#else
+    saddr.sin_addr.s_addr = inet_addr("239.255.255.250");
+#endif
     saddr.sin_port = htons(1900);
 
     if (-1 == bind(s, (struct sockaddr *)&saddr, sizeof(saddr))) {
