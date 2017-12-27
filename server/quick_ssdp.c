@@ -125,8 +125,10 @@ static void get_local_address() {
         for (struct ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
           if (strcmp(cur->ifa_name, if_name) == 0) {
             if ((cur->ifa_addr->sa_family == AF_LINK) && cur->ifa_addr) {
+                unsigned char mac[6];
                 struct sockaddr_dl* sdl = (struct sockaddr_dl*)cur->ifa_addr;
-                memcpy(hw_addr, LLADDR(sdl), sdl->sdl_alen);
+                memcpy(mac, LLADDR(sdl), sdl->sdl_alen);
+                sprintf(hw_addr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
             }
 
             if (cur->ifa_addr->sa_family == AF_INET) {
