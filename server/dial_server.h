@@ -41,13 +41,17 @@
 typedef enum {
     kDIALStatusStopped,
     kDIALStatusHide,
-    kDIALStatusRunning
+    kDIALStatusRunning,
+    kDIALStatusErrorNotImplemented,
+    kDIALStatusErrorForbidden,
+    kDIALStatusErrorUnauth,
+    kDIALStatusError
 } DIALStatus;
 
 /*
  * DIAL version that is reported via in the status response.
  */
-#define DIAL_VERSION ("\"2.1\"")
+#define DIAL_VERSION ("\"2.2\"")
 
 /*
  * The maximum DIAL payload accepted per the DIAL 1.6.1 specification.
@@ -75,7 +79,8 @@ typedef void * DIAL_run_t;
  * DIAL start callback
  */
 typedef DIALStatus (*DIAL_app_start_cb)(DIALServer *ds, const char *app_name,
-                                        const char *payload, const char *additionalDataUrl,
+                                        const char *payload, const char *query_string,
+                                        const char *additionalDataUrl,
                                         DIAL_run_t *run_id, void *callback_data);
 
 /*

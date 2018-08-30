@@ -42,6 +42,7 @@
 
 #include "url_lib.h"
 #include "nf_callbacks.h"
+#include "system_callbacks.h"
 
 #define BUFSIZE 256
 
@@ -193,7 +194,8 @@ int shouldRelaunch(
 }
 
 static DIALStatus youtube_start(DIALServer *ds, const char *appname,
-                                const char *payload, const char *additionalDataUrl,
+                                const char *payload, const char* query_string,
+                                const char *additionalDataUrl,
                                 DIAL_run_t *run_id, void *callback_data) {
     printf("\n\n ** LAUNCH YouTube ** with payload %s\n\n", payload);
 
@@ -277,9 +279,11 @@ void runDial(void)
     cb_nf.stop_cb = netflix_stop;
     cb_nf.status_cb = netflix_status;
     struct DIALAppCallbacks cb_yt = {youtube_start, youtube_hide, youtube_stop, youtube_status};
+    struct DIALAppCallbacks cb_system = {system_start, system_hide, NULL, system_status};
 
     DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, ".netflix.com");
     DIAL_register_app(ds, "YouTube", &cb_yt, NULL, 1, ".youtube.com");
+    DIAL_register_app(ds, "system", &cb_system, NULL, 1, "");
     DIAL_start(ds);
 
     gDialPort = DIAL_get_port(ds);
