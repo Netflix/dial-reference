@@ -107,7 +107,7 @@ Options:
   --help, -h                         Show help                         [boolean]
 ```
 
-To run each test independantly and not through tests.js, just call the
+To run each test independently and not through tests.js, just call the
 appropriate test file name.
 ```
 Example:
