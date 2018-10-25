@@ -65,6 +65,14 @@ function test() {
             if(response.statusCode !== 403) {
                 throw new Error(`Tried to stop ${systemApp}. Expected statusCode: 403 but got ${response.statusCode}`);
             }
+            utils.printDebug(`Confirmed response to stop request is 403 as expected.`);
+        })
+        .then(dial.launchApplication.bind(null, host, systemApp))
+        .then((response) => {
+            if(response.statusCode !== 403) {
+                throw new Error(`Tried to launch ${systemApp}. Expected statusCode: 403 but got ${response.statusCode}`);
+            }
+            utils.printDebug(`Confirmed response to launch request is 403 as expected.`);
         })
         .then(() => {
             utils.printTestSuccess()
