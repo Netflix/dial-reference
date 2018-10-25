@@ -1,8 +1,8 @@
 "use strict";
 
-var Q = require("q");
+var utils = require("../libs/utils.js");
 
-const argv    = require("yargs")
+const argv = require("yargs")
     .usage("\nUsage: node " + __filename.slice(__dirname.length + 1) + "[options]")
     .option("host", {
         describe: "IP address of host on which DIAL server under test is running",
@@ -21,45 +21,63 @@ const argv    = require("yargs")
         type: "string",
         default: 5000
     })
+    .option("logLevel", {
+        alias: "loglevel",
+        describe: "The log level for displaying messages to the console, default is `info`', options are info, debug, error, warn",
+        type: "string",
+        default: "info"
+    })
     .help("help").alias("help", "h").argv;
 
-var discoverServerUnderTest                      = require("../tests/discoverServerUnderTest.js"),
-    launchApplicationNotRecognized               = require("../tests/launchApplicationNotRecognized.js"),
+utils.setLogLevel(argv.logLevel);
+
+var discoverServerUnderTest = require("../tests/discoverServerUnderTest.js"),
+    launchApplicationNotRecognized = require("../tests/launchApplicationNotRecognized.js"),
     launchApplicationInRunningStateWithNoPayload = require("../tests/launchApplicationInRunningStateWithNoPayload.js"),
-    launchApplicationInRunningStateWithPayload   = require("../tests/launchApplicationInRunningStateWithPayload.js"),
+    launchApplicationInRunningStateWithPayload = require("../tests/launchApplicationInRunningStateWithPayload.js"),
     launchApplicationInStoppedStateWithNoPayload = require("../tests/launchApplicationInStoppedStateWithNoPayload.js"),
-    launchApplicationInStoppedStateWithPayload   = require("../tests/launchApplicationInStoppedStateWithPayload.js"),
-    launchApplicationInHiddenStateWithNoPayload  = require("../tests/launchApplicationInHiddenStateWithNoPayload.js"),
-    launchApplicationInHiddenStateWithPayload    = require("../tests/launchApplicationInHiddenStateWithPayload.js"),
-    launchApplicationWithExcessPayload           = require("../tests/launchApplicationWithExcessPayload.js"),
-    stopInvalidApplicationInstance               = require("../tests/stopInvalidApplicationInstance.js"),
-    stopApplicationInRunningState                = require("../tests/stopApplicationInRunningState.js"),
-    stopApplicationInStoppedState                = require("../tests/stopApplicationInStoppedState.js"),
-    stopApplicationInHiddenState                 = require("../tests/stopApplicationInHiddenState.js"),
-    hideInvalidApplicationInstance               = require("../tests/hideInvalidApplicationInstance.js"),
-    hideApplicationInHiddenState                 = require("../tests/hideApplicationInHiddenState.js"),
-    hideApplicationInRunningState                = require("../tests/hideApplicationInRunningState.js");
+    launchApplicationInStoppedStateWithPayload = require("../tests/launchApplicationInStoppedStateWithPayload.js"),
+    launchApplicationInHiddenStateWithNoPayload = require("../tests/launchApplicationInHiddenStateWithNoPayload.js"),
+    launchApplicationInHiddenStateWithPayload = require("../tests/launchApplicationInHiddenStateWithPayload.js"),
+    launchApplicationWithExcessPayload = require("../tests/launchApplicationWithExcessPayload.js"),
+    stopInvalidApplicationInstance = require("../tests/stopInvalidApplicationInstance.js"),
+    stopApplicationInRunningState = require("../tests/stopApplicationInRunningState.js"),
+    stopApplicationInStoppedState = require("../tests/stopApplicationInStoppedState.js"),
+    stopApplicationInHiddenState = require("../tests/stopApplicationInHiddenState.js"),
+    hideInvalidApplicationInstance = require("../tests/hideInvalidApplicationInstance.js"),
+    hideApplicationInHiddenState = require("../tests/hideApplicationInHiddenState.js"),
+    hideApplicationInRunningState = require("../tests/hideApplicationInRunningState.js"),
+    sleepTheSystemWithNoKeyWhenItIsRequired = require("../tests/sleepTheSystemWithNoKeyWhenItIsRequired"),
+    sleepTheSystemWithKeyWhenItIsRequired = require("../tests/sleepTheSystemWithKeyWhenItIsRequired");
 
-new Q()
-  .then(discoverServerUnderTest.test)
-  // Application launch tests
-  .then(launchApplicationNotRecognized.test)
-  .then(launchApplicationInRunningStateWithNoPayload.test)
-  .then(launchApplicationInRunningStateWithPayload.test)
-  .then(launchApplicationInStoppedStateWithNoPayload.test)
-  .then(launchApplicationInStoppedStateWithPayload.test)
-  .then(launchApplicationInHiddenStateWithNoPayload.test)
-  .then(launchApplicationInHiddenStateWithPayload.test)
-  .then(launchApplicationWithExcessPayload.test)
+// new Q()
+Promise.resolve()
+     // System/Sleep tests - these force the system into low power mode
+    .then(sleepTheSystemWithNoKeyWhenItIsRequired.test)
+    .then(sleepTheSystemWithKeyWhenItIsRequired.test)
 
-  // Application stop tests
-  .then(stopInvalidApplicationInstance.test)
-  .then(stopApplicationInRunningState.test)
-  .then(stopApplicationInStoppedState.test)
-  .then(stopApplicationInHiddenState.test)
+    // Discovery Tests
+    .then(discoverServerUnderTest.test)
 
-  // Application hide tests
-  .then(hideInvalidApplicationInstance.test)
-  .then(hideApplicationInHiddenState.test)
-  .then(hideApplicationInRunningState.test)
-  .done();
+    // Application launch tests
+    .then(launchApplicationNotRecognized.test)
+    .then(launchApplicationInRunningStateWithNoPayload.test)
+    .then(launchApplicationInRunningStateWithPayload.test)
+    // .then(launchApplicationInStoppedStateWithNoPayload.test)
+    .then(launchApplicationInStoppedStateWithPayload.test)
+    .then(launchApplicationInHiddenStateWithNoPayload.test)
+    .then(launchApplicationInHiddenStateWithPayload.test)
+    .then(launchApplicationWithExcessPayload.test)
+
+    // Application stop tests
+    .then(stopInvalidApplicationInstance.test)
+    .then(stopApplicationInRunningState.test)
+    .then(stopApplicationInStoppedState.test)
+    .then(stopApplicationInHiddenState.test)
+
+    // Application hide tests
+    .then(hideInvalidApplicationInstance.test)
+    .then(hideApplicationInHiddenState.test)
+    .then(hideApplicationInRunningState.test)
+
+

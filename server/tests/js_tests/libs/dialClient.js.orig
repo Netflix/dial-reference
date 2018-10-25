@@ -142,31 +142,6 @@ function launchApplication(host, app, payload) {
       });
 }
 
-function sleepSystem(host, key) {
-    var keyComponent = key ? `&key=${key}` : '';
-    return getAppsUrl(host)
-        // TODO: Send friendlyName query parameter for DIAL 2.1 and greater versions of server
-        .then(function (appsUrl) {
-            var request = {
-                url: `${appsUrl}/system?action=sleep${keyComponent}`,
-                method: "POST",
-                timeout: 6000,
-                headers: {
-                    "Content-Type" : "text/plain;charset=\"utf-8\""
-                }
-            };
-
-            return new Promise(function (resolve, reject) {
-                return httpRequest(request, function handleResponse(error, response) {
-                    if(!error) {
-                        return resolve(response);
-                    }
-                    return reject(new Error("Error launching application " + error));
-                });
-            });
-        });
-}
-
 function stopApplication(host, app) {
     return new Q()
       .then(constructAppResourceUrl.bind(null, host, app))
@@ -189,9 +164,9 @@ function stopApplication(host, app) {
           return new Q.Promise(function (resolve, reject) {
               return httpRequest(request, function handleResponse(error, response) {
                   if(!error) {
-                      resolve(response);
+                      return resolve(response);
                   }
-                  reject(new Error("Error stopping application " + error));
+                  return reject(new Error("Error stopping application " + error));
               });
           });
       });
@@ -279,7 +254,7 @@ function constructAppResourceUrl(host, appName) {
     return new Q()
       .then(getAppsUrl.bind(null, host))
       .then(function (appUrl) {
-          return appUrl.replace(/\/+$/, `/${appName}`);
+          return appUrl.replace(/\/+$/, "") + "/" + appName;
       });
 }
 
@@ -298,7 +273,7 @@ function getAppsUrl(host) {
     });
 
     if(found) {
-        return Promise.resolve(appUrl);
+        return appUrl;
     }
 
     // If value is not persisted
@@ -423,4 +398,3 @@ module.exports.hideApplicationInstance  = hideApplicationInstance;
 module.exports.constructAppResourceUrl  = constructAppResourceUrl;
 module.exports.getAppsUrl               = getAppsUrl;
 module.exports.getLocation              = getLocation;
-module.exports.sleepSystem              = sleepSystem;
