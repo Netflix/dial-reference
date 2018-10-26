@@ -61,6 +61,8 @@ static char spUuid[BUFSIZE];
 extern bool wakeOnWifiLan;
 static int gDialPort;
 
+char spSleepPassword[BUFSIZE];
+
 static char *spAppYouTube = "chrome";
 static char *spAppYouTubeMatch = "chrome.*google-chrome-dial";
 static char *spAppYouTubeExecutable = "/opt/google/chrome/google-chrome";
@@ -324,6 +326,9 @@ static void processOption( int index, char * pOption )
                     pOption, WAKE_OPTION_LONG);
             exit(1);
         }
+        break;
+    case 6:
+        setValue( pOption, spSleepPassword );
         break;
     default:
         // Should not get here

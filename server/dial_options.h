@@ -50,6 +50,10 @@
 #define WAKE_OPTION_LONG "--wake-on-wifi-len"
 #define WAKE_DESCRIPTION "Enable wake on wifi/len.  Value: on/off.  Default (on)"
 
+#define SLEEP_PASSWORD "-S"
+#define SLEEP_PASSWORD_LONG "--sleep-password"
+#define SLEEP_PASSWORD_DESCRIPTION "Password required to put the device to deep sleep"
+
 struct dial_options
 {
     const char * pOption;
@@ -88,6 +92,11 @@ struct dial_options gDialOptions[] =
         WAKE_OPTION,
         WAKE_OPTION_LONG,
         WAKE_DESCRIPTION
+    },
+    {
+        SLEEP_PASSWORD,
+        SLEEP_PASSWORD_LONG,
+        SLEEP_PASSWORD_DESCRIPTION
     }
 };
 
