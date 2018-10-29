@@ -22,7 +22,8 @@ int shouldRelaunch(DIALServer *pServer, const char *pAppName, const char *args )
 pid_t runApplication( const char * const args[], DIAL_run_t *run_id );
 
 DIALStatus netflix_start(DIALServer *ds, const char *appname,
-                                const char *payload, const char *additionalDataUrl,
+                                const char *payload, const char* query_string,
+                                const char *additionalDataUrl,
                                 DIAL_run_t *run_id, void *callback_data) {
     int shouldRelaunchApp = 0;
     int appPid = 0;

@@ -3,7 +3,7 @@ CC=$(TARGET)gcc
 .PHONY: clean
 .DEFAULT_GOAL=all
 
-OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o
+OBJS := main.o dial_server.o mongoose.o quick_ssdp.o url_lib.o dial_data.o system_callbacks.o
 HEADERS := $(wildcard *.h)
 
 %.c: $(HEADERS)
@@ -20,7 +20,7 @@ nf_callbacks_lib: nf_callbacks.o
 
 
 dialserver: nf_callbacks_lib $(OBJS)
-	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -L. -lnfCallbacks -o dialserver
+	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver
 
 test:
 	make -C tests

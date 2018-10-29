@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2018 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,24 +23,26 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _NF_CALLBACKS_H
-#define _NF_CALLBACKS_H
+#ifndef SYSTEM_CALLBACKS_H_
+#define SYSTEM_CALLBACKS_H_
 
 #include "dial_server.h"
 
-DIALStatus netflix_start(DIALServer *ds, const char *appname,
+DIALStatus system_start(DIALServer *ds, const char *appname,
                             const char *payload, const char* query_string,
                             const char *additionalDataUrl,
                             DIAL_run_t *run_id, void *callback_data);
 
 
-DIALStatus netflix_hide(DIALServer *ds, const char *app_name,
-                        DIAL_run_t *run_id, void *callback_data);
+DIALStatus system_hide(DIALServer *ds, const char *app_name,
+                       DIAL_run_t *run_id, void *callback_data);
 
-DIALStatus netflix_status(DIALServer *ds, const char *appname,
-                          DIAL_run_t run_id, int* pCanStop, void *callback_data);
+DIALStatus system_status(DIALServer *ds, const char *appname,
+                         DIAL_run_t run_id, int* pCanStop, void *callback_data);
 
-void netflix_stop(DIALServer *ds, const char *appname, DIAL_run_t run_id,
-                  void *callback_data);
 
-#endif
+
+
+
+
+#endif /* SYSTEM_CALLBACKS_H_ */

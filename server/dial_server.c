@@ -151,6 +151,7 @@ static void handle_app_start(struct mg_connection *conn,
             }
             fprintf(stderr, "Starting the app with params %s\n", body);
             app->state = app->callbacks.start_cb(ds, app_name, body,
+                                                 request_info->query_string,
                                                  additional_data_param, 
                                                  &app->run_id,
                                                  app->callback_data);
@@ -166,6 +167,10 @@ static void handle_app_start(struct mg_connection *conn,
                 // copy the payload into the application struct
                 memset(app->payload, 0, DIAL_MAX_PAYLOAD);
                 memcpy(app->payload, body, body_size);
+            } else if (app->state == kDIALStatusErrorForbidden) {
+                mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
+            } else if (app->state == kDIALStatusErrorUnauth) {
+                mg_send_http_error(conn, 401, "Unauthorized", "Unauthorized");
             } else {
                 mg_send_http_error(conn, 503, "Service Unavailable",
                                    "Service Unavailable");
@@ -281,24 +286,30 @@ static void handle_app_stop(struct mg_connection *conn,
     int canStop = 0;
 
     ds_lock(ds);
-    app = *find_app(ds, app_name);
 
-    // update the application state
-    if (app) {
-        app->state = app->callbacks.status_cb(ds, app_name, app->run_id,
-                                              &canStop, app->callback_data);
-    }
-
-    if (!app || app->state == kDIALStatusStopped) {
-        mg_send_http_error(conn, 404, "Not Found", "Not Found");
+    // Special handling for system app
+    if (strcmp(app_name, "system") == 0) {
+        mg_send_http_error(conn, 403, "Forbidden", "Forbidden");  // Can't stop system app.
     } else {
-        app->callbacks.stop_cb(ds, app_name, app->run_id, app->callback_data);
-        app->state = kDIALStatusStopped;
-        mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-                  "Content-Type: text/plain\r\n"
-                  "Access-Control-Allow-Origin: %s\r\n"
-                  "\r\n",
-                  origin_header);
+        app = *find_app(ds, app_name);
+
+        // update the application state
+        if (app) {
+            app->state = app->callbacks.status_cb(ds, app_name, app->run_id,
+                                                  &canStop, app->callback_data);
+        }
+
+        if (!app || app->state == kDIALStatusStopped) {
+            mg_send_http_error(conn, 404, "Not Found", "Not Found");
+        } else {
+            app->callbacks.stop_cb(ds, app_name, app->run_id, app->callback_data);
+            app->state = kDIALStatusStopped;
+            mg_printf(conn, "HTTP/1.1 200 OK\r\n"
+                      "Content-Type: text/plain\r\n"
+                      "Access-Control-Allow-Origin: %s\r\n"
+                      "\r\n",
+                      origin_header);
+        }
     }
     ds_unlock(ds);
 }
