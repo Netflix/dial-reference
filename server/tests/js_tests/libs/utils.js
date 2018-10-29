@@ -31,7 +31,7 @@ function consoleFormatter(options) {
     switch (options.level) {
     case "error": return colors.red(str);
     case "warn": return colors.yellow(str);
-    case "debug": return colors.blue(str);
+    case "debug": return colors.cyan(str);
     case "info":
     default: return str;
     }
@@ -46,12 +46,8 @@ function fileFormatter(options) {
 function setLogLevel(level) {
     winston.remove(winston.transports.Console);
     return winston.add(winston.transports.Console, {
-        level: "debug",
-        name: "log_file",
-        filename: "js_tests_log.txt",
-        json: false,
-        formatter: fileFormatter,
-        options: { flags: "w" }
+        level: level,
+        formatter: consoleFormatter
     });
 }
 
