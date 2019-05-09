@@ -279,7 +279,7 @@ function constructAppResourceUrl(host, appName) {
     return new Q()
       .then(getAppsUrl.bind(null, host))
       .then(function (appUrl) {
-          return appUrl.replace(/\/+$/, `/${appName}`);
+          return appUrl.replace(/\/*$/, `/${appName}`);
       });
 }
 
