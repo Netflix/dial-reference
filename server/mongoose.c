@@ -731,7 +731,7 @@ static void process_new_connection(struct mg_connection *conn) {
     conn->request_len = read_request(conn->client.sock,
         conn->buf, conn->buf_size, &conn->data_len);
   }
-  assert(conn->data_len >= conn->request_len);
+  assert(conn->data_len >= conn->request_len && conn->request_len > 1);
   if (conn->request_len == 0 && conn->data_len == conn->buf_size) {
     mg_send_http_error(conn, 413, "Request Too Large", "");
     return;
