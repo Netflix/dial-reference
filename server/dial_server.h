@@ -121,7 +121,7 @@ DIALServer *DIAL_create();
  *
  * @param[in] ds DIAL server handle
  */
-void DIAL_start(DIALServer *ds);
+int DIAL_start(DIALServer *ds);
 
 /*
  * Stop the DIAL server.

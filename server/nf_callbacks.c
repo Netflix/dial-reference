@@ -14,8 +14,14 @@ extern char *spAppNetflix;
 extern char spNetflix[];
 static char *defaultLaunchParam = "source_type=12";
 
-// Adding 20 bytes for prepended source_type for Netflix
-static char sQueryParam[DIAL_MAX_PAYLOAD+DIAL_MAX_ADDITIONALURL+40];
+// Adding 40 bytes for defaultLaunchParam, plus additional characters that
+// may get added.
+//
+// dial_server.c ensures the payload is <= DIAL_MAX_PAYLOAD but since we
+// URL-encode it, the total string length may triple.
+//
+// dial_server.c ensures the additional data URL is <= DIAL_MAX_ADDITIONALURL.
+static char sQueryParam[3 * DIAL_MAX_PAYLOAD + DIAL_MAX_ADDITIONALURL + 40];
 
 int isAppRunning( char *pzName, char *pzCommandPattern );
 int shouldRelaunch(DIALServer *pServer, const char *pAppName, const char *args );
@@ -34,21 +40,31 @@ DIALStatus netflix_start(DIALServer *ds, const char *appname,
 
     // construct the payload to determine if it has changed from the previous launch
     memset( sQueryParam, 0, sizeof(sQueryParam) );
-    strcat( sQueryParam, defaultLaunchParam );
-    if(strlen(payload))
+    strncpy( sQueryParam, defaultLaunchParam, sizeof(sQueryParam) - 1);
+        if(strlen(payload))
     {
         char * pUrlEncodedParams;
         pUrlEncodedParams = url_encode( payload );
         if( pUrlEncodedParams ){
-            strcat( sQueryParam, "&dial=");
-            strcat( sQueryParam, pUrlEncodedParams );
-            free( pUrlEncodedParams );
+            if (strlen(sQueryParam) + sizeof("&dial=") + strlen(pUrlEncodedParams) < sizeof(sQueryParam)) {
+                strcat( sQueryParam, "&dial=" );
+                strcat( sQueryParam, pUrlEncodedParams );
+                free( pUrlEncodedParams );
+            } else {
+                free( pUrlEncodedParams );
+                return kDIALStatusError;
+            }
+
         }
     }
 
     if(strlen(additionalDataUrl)){
-        strcat(sQueryParam, "&");
-        strcat(sQueryParam, additionalDataUrl);
+        if (strlen(sQueryParam) + sizeof("&") + strlen(additionalDataUrl) < sizeof(sQueryParam)) {
+            strcat(sQueryParam, "&");
+            strcat(sQueryParam, additionalDataUrl);
+        } else {
+            return kDIALStatusError;
+        }
     }
 
     printf("appPid = %s, shouldRelaunch = %s queryParams = %s\n",

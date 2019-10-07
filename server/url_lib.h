@@ -34,7 +34,7 @@
  * Concatenate a maxim of max_chars characters from src into dest,
  * and return a pointer to the last character in dest.
  */
-char* smartstrcat(char* dest, char* src, size_t max_chars);
+char* smartstrncpy(char* dest, char* src, size_t max_chars);
 
 int urldecode(char *dst, const char *src, size_t max_size);
 

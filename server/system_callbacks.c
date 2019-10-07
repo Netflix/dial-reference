@@ -20,8 +20,8 @@ DIALStatus system_start(DIALServer *ds, const char *appname, const char *payload
     if (strlen(spSleepPassword) != 0) {
 
         /* Look for key */
-        char *key_value;
-        if ( (key_value = strchr(query_string, '&')) == '\0' ) {
+        char *key_value = strchr(query_string, '&');
+        if ( key_value == NULL || *key_value == '\0' ) {
             return kDIALStatusErrorForbidden;   // No key specified.
         }
 

@@ -66,12 +66,32 @@ struct DIALServer_ {
     pthread_mutex_t mux;
 };
 
-static void ds_lock(DIALServer *ds) {
-    pthread_mutex_lock(&ds->mux);
+/**
+ * Acquire the DIAL server mutex.
+ *
+ * @return 1 if acquisition succeeded, 0 if it failed.
+ */
+static int ds_lock(DIALServer *ds) {
+    int err = 0;
+    if ((err = pthread_mutex_lock(&ds->mux)) != 0) {
+        printf("Unable to acquire DS mutex: [%d]", err);
+        return 0;
+    }
+    return 1;
 }
 
-static void ds_unlock(DIALServer *ds) {
-    pthread_mutex_unlock(&ds->mux);
+/**
+ * Release the DIAL server mutex.
+ *
+ * @return 1 if release succeeded, 0 if it failed.
+ */
+static int ds_unlock(DIALServer *ds) {
+    int err = 0;
+    if ((err = pthread_mutex_unlock(&ds->mux)) != 0) {
+        printf("Unable to release DS mutex: [%d]", err);
+        return 0;
+    }
+    return 1;
 }
 
 // finds an app and returns a pointer to the previous element's next pointer
@@ -88,11 +108,25 @@ static DIALApp **find_app(DIALServer *ds, const char *app_name) {
     return ret;
 }
 
-static void url_decode_xml_encode(char *dst, char *src, size_t src_size) {
+/**
+ * URL-unescape the string, then XML-escape it.
+ *
+ * @param dst the destination XML-escaped string. Must be large enough for
+ *        the resulting string (technically as much as 6x the raw string
+ *        length based on the implementation in url_lib.c).
+ * @param src the URL-escaped string.
+ * @param src_size size of the URL-escaped string, including trailing NULL.
+ * @return true if successful, false if out-of-memory.
+ */
+static int url_decode_xml_encode(char *dst, char *src, size_t src_size) {
     char *url_decoded_key = (char *) malloc(src_size + 1);
+    if (url_decoded_key == NULL) {
+        return 0;
+    }
     urldecode(url_decoded_key, src, src_size);
     xmlencode(dst, url_decoded_key, 2 * src_size);
     free(url_decoded_key);
+    return 1;
 }
 
 /*
@@ -117,19 +151,21 @@ static void handle_app_start(struct mg_connection *conn,
                              const struct mg_request_info *request_info,
                              const char *app_name,
                              const char *origin_header) {
-    char additional_data_param[256] = {0, };
+    char additional_data_param[DIAL_MAX_ADDITIONALURL] = {0, };
     char body[DIAL_MAX_PAYLOAD + sizeof(additional_data_param) + 2] = {0, };
     DIALApp *app;
     DIALServer *ds = request_info->user_data;
     int body_size;
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+        return;
+    }
     app = *find_app(ds, app_name);
     if (!app) {
         mg_send_http_error(conn, 404, "Not Found", "Not Found");
     } else {
-        body_size = mg_read(conn, body, sizeof(body));
-        // NUL-terminate it just in case
+        body_size = mg_read(conn, body, sizeof(body) - 1);
         if (body_size > DIAL_MAX_PAYLOAD) {
             mg_send_http_error(conn, 413, "413 Request Entity Too Large",
                                "413 Request Entity Too Large");
@@ -144,7 +180,7 @@ static void handle_app_start(struct mg_connection *conn,
 
             if (app->useAdditionalData) {
                 // Construct additionalDataUrl=http://host:port/apps/app_name/dial_data
-                sprintf(additional_data_param,
+                snprintf(additional_data_param, DIAL_MAX_ADDITIONALURL,
                         "additionalDataUrl=http%%3A%%2F%%2Flocalhost%%3A%d%%2Fapps%%2F%s%%2Fdial_data%%3F",
                         dial_port, app_name);
             }
@@ -170,6 +206,8 @@ static void handle_app_start(struct mg_connection *conn,
                 mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
             } else if (app->state == kDIALStatusErrorUnauth) {
                 mg_send_http_error(conn, 401, "Unauthorized", "Unauthorized");
+            } else if (app->state == kDIALStatusErrorNotImplemented) {
+                mg_send_http_error(conn, 501, "Not Implemented", "Not Implemented");
             } else {
                 mg_send_http_error(conn, 503, "Service Unavailable",
                                    "Service Unavailable");
@@ -195,7 +233,10 @@ static void handle_app_status(struct mg_connection *conn,
         free(clientVersionStr);
     }
     
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+        return;
+    }
     app = *find_app(ds, app_name);
     if (!app) {
         mg_send_http_error(conn, 404, "Not Found", "Not Found");
@@ -208,23 +249,45 @@ static void handle_app_status(struct mg_connection *conn,
     char *p = dial_data;
 
     for (DIALData* first = app->dial_data; first != NULL; first = first->next) {
-        p = smartstrcat(p, "    <", end - p);
+        p = smartstrncpy(p, "    <", end - p);
         size_t key_length = strlen(first->key);
         char *encoded_key = (char *) malloc(2 * key_length + 1);
-        url_decode_xml_encode(encoded_key, first->key, key_length);
+        if (encoded_key == NULL) {
+            mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+            ds_unlock(ds);
+            return;
+        }
+        if (!url_decode_xml_encode(encoded_key, first->key, key_length)) {
+            mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+            free(encoded_key); encoded_key = NULL;
+            ds_unlock(ds);
+            return;
+        };
 
         size_t value_length = strlen(first->value);
         char *encoded_value = (char *) malloc(2 * value_length + 1);
-        url_decode_xml_encode(encoded_value, first->value, value_length);
+        if (encoded_value == NULL) {
+            mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+            free(encoded_key); encoded_key = NULL;
+            ds_unlock(ds);
+            return;
+        }
+        if (!url_decode_xml_encode(encoded_value, first->value, value_length)) {
+            mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+            free(encoded_value); encoded_value = NULL;
+            free(encoded_key); encoded_key = NULL;
+            ds_unlock(ds);
+            return;
+        }
 
-        p = smartstrcat(p, encoded_key, end - p);
-        p = smartstrcat(p, ">", end - p);
-        p = smartstrcat(p, encoded_value, end - p);
-        p = smartstrcat(p, "</", end - p);
-        p = smartstrcat(p, encoded_key, end - p);
-        p = smartstrcat(p, ">", end - p);
-        free(encoded_key);
-        free(encoded_value);
+        p = smartstrncpy(p, encoded_key, end - p);
+        p = smartstrncpy(p, ">", end - p);
+        p = smartstrncpy(p, encoded_value, end - p);
+        p = smartstrncpy(p, "</", end - p);
+        p = smartstrncpy(p, encoded_key, end - p);
+        p = smartstrncpy(p, ">", end - p);
+        free(encoded_key); encoded_key = NULL;
+        free(encoded_value); encoded_value = NULL;
     }
 
     app->state = app->callbacks.status_cb(ds, app_name, app->run_id, &canStop,
@@ -284,7 +347,10 @@ static void handle_app_stop(struct mg_connection *conn,
     DIALServer *ds = request_info->user_data;
     int canStop = 0;
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+        return;
+    }
 
     // Special handling for system app
     if (strcmp(app_name, "system") == 0) {
@@ -321,7 +387,10 @@ static void handle_app_hide(struct mg_connection *conn,
     DIALServer *ds = request_info->user_data;
     int canStop = 0;
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+        return;
+    }
     app = *find_app(ds, app_name);
   
     // update the application state
@@ -335,17 +404,17 @@ static void handle_app_hide(struct mg_connection *conn,
     } else {
         // not implemented in reference
         DIALStatus status = app->callbacks.hide_cb(ds, app_name, app->run_id, app->callback_data);
-        if (status!=kDIALStatusHide){
+        if (status != kDIALStatusHide){
             fprintf(stderr, "Hide not implemented for reference.\n");
             mg_send_http_error(conn, 501, "Not Implemented",
                                "Not Implemented");
-        }else{
-        app->state = kDIALStatusHide;
-        mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-                  "Content-Type: text/plain\r\n"
-                  "Access-Control-Allow-Origin: %s\r\n"
-                  "\r\n",
-                  origin_header);
+        } else {
+            app->state = kDIALStatusHide;
+            mg_printf(conn, "HTTP/1.1 200 OK\r\n"
+                      "Content-Type: text/plain\r\n"
+                      "Access-Control-Allow-Origin: %s\r\n"
+                      "\r\n",
+                      origin_header);
         }
     }
     ds_unlock(ds);
@@ -361,7 +430,10 @@ static void handle_dial_data(struct mg_connection *conn,
     DIALApp *app;
     DIALServer *ds = request_info->user_data;
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        mg_send_http_error(conn, 500, "500 Internal Server Error", "500 Internal Server Error");
+        return;
+    }
     app = *find_app(ds, app_name);
     if (!app) {
         mg_send_http_error(conn, 404, "Not Found", "Not Found");
@@ -371,21 +443,22 @@ static void handle_dial_data(struct mg_connection *conn,
     int nread;
     if (!use_payload) {
         if (request_info->query_string) {
+            int qs_len = strlen(request_info->query_string);
+            if (qs_len > DIAL_DATA_MAX_PAYLOAD) {
+                mg_send_http_error(conn, 413, "413 Request Entity Too Large",
+                                   "413 Request Entity Too Large");
+                ds_unlock(ds);
+                return;
+            }
             strncpy(body, request_info->query_string, DIAL_DATA_MAX_PAYLOAD);
-            nread = strlen(body);
+            nread = qs_len;
         } else {
           nread = 0;
         }
     } else {
         nread = mg_read(conn, body, DIAL_DATA_MAX_PAYLOAD);
-        body[nread] = '\0';
     }
-    if (nread > DIAL_DATA_MAX_PAYLOAD) {
-        mg_send_http_error(conn, 413, "413 Request Entity Too Large",
-                           "413 Request Entity Too Large");
-        ds_unlock(ds);
-        return;
-    }
+    body[nread] = '\0';
 
     if (isBadPayload(body, nread)) {
         mg_send_http_error(conn, 400, "400 Bad Request", "400 Bad Request");
@@ -398,6 +471,7 @@ static void handle_dial_data(struct mg_connection *conn,
 
     app->dial_data = parse_params(body);
     store_dial_data(app->name, app->dial_data);
+    free_dial_data(&app->dial_data);
 
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
               "Access-Control-Allow-Origin: %s\r\n"
@@ -418,7 +492,7 @@ static int ends_with(const char *str, const char *suffix) {
 }
 
 
-// str contains a white space separated list of strings (only supports SPACE  characters for now)
+// str contains a white space separated list of strings (only supports SPACE characters for now)
 static int ends_with_in_list (const char *str, const char *list) {
     if (!str || !list)
         return 0;
@@ -447,12 +521,12 @@ static int ends_with_in_list (const char *str, const char *list) {
     	substring[copyLength] = '\0';
     	//printf("found %s \n", substring);
     	if (ends_with(str, substring)) {
-          free(substring);
+          free(substring); substring = NULL;
           return 1;
     	}
     	scanPointer = scanPointer + copyLength + 1; // assumption: only 1 character
     }
-    free(substring);
+    free(substring); substring = NULL;
     return ends_with(str, scanPointer);
 }
 
@@ -471,7 +545,10 @@ static int is_allowed_origin(DIALServer* ds, char * origin, const char * app_nam
         return 1;
     }
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        // If we can't check, fail in favor of safety.
+        return 0;
+    }
     DIALApp *app;
     int result = 0;
     for (app = ds->apps; app != NULL; app = app->next) {
@@ -530,11 +607,16 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
     fprintf(stderr, "Origin %s, Host: %s\n", origin_header, host_header);
     if (event == MG_NEW_REQUEST) {
         // URL ends with run
-        if (!strncmp(request_info->uri + strlen(request_info->uri) - 4, RUN_URI,
-                     strlen(RUN_URI))) {
-            char app_name[256] = {0, };  // assuming the application name is not over 256 chars.
-            strncpy(app_name, request_info->uri + strlen(APPS_URI),
-                    ((strlen(request_info->uri) - 4) - (sizeof(APPS_URI) - 1)));
+        if (strlen(request_info->uri) > strlen(RUN_URI) + strlen(APPS_URI)
+            && !strncmp(request_info->uri + strlen(request_info->uri) - strlen(RUN_URI), RUN_URI, strlen(RUN_URI)))
+        {
+            // Maximum app name length of 255 characters.
+            char app_name[256] = {0, };
+            int appname_len = strlen(request_info->uri) - strlen(RUN_URI) - strlen(APPS_URI);
+            if (appname_len > 255) {
+                appname_len = 255;
+            }
+            strncpy(app_name, request_info->uri + strlen(APPS_URI), appname_len);
 
             if (!strcmp(request_info->request_method, "OPTIONS")) {
                 return options_response(ds, conn, host_header, origin_header, app_name, "DELETE, OPTIONS");
@@ -542,7 +624,8 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
 
             // DELETE non-empty app name
             if (app_name[0] != '\0'
-                    && !strcmp(request_info->request_method, "DELETE")) {
+                && !strcmp(request_info->request_method, "DELETE"))
+            {
                 if (host_header && is_allowed_origin(ds, origin_header, app_name)) {
                     handle_app_stop(conn, request_info, app_name, origin_header);
                 } else {
@@ -555,10 +638,12 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
             }
         }
         // URI starts with "/apps/" and is followed by an app name
-        else if (!strncmp(request_info->uri, APPS_URI, sizeof(APPS_URI) - 1)
-                && !strchr(request_info->uri + strlen(APPS_URI), '/')) {
+        else if (strlen(request_info->uri) > strlen(APPS_URI)
+                 && !strncmp(request_info->uri, APPS_URI, strlen(APPS_URI))
+                 && !strchr(request_info->uri + strlen(APPS_URI), '/'))
+        {
             const char *app_name;
-            app_name = request_info->uri + sizeof(APPS_URI) - 1;
+            app_name = request_info->uri + strlen(APPS_URI);
 
             if (!strcmp(request_info->request_method, "OPTIONS")) {
                 return options_response(ds, conn, host_header, origin_header, app_name, "GET, POST, OPTIONS");
@@ -576,27 +661,29 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
             } else if (!strcmp(request_info->request_method, "GET")) {
                 handle_app_status(conn, request_info, app_name, origin_header);
             } else {
-                mg_send_http_error(conn, 501, "Not Implemented",
-                                   "Not Implemented");
+                mg_send_http_error(conn, 501, "Not Implemented", "Not Implemented");
             }
         }
         // URI that ends with HIDE_URI
-        else if (!strncmp(request_info->uri + strlen(request_info->uri) - strlen(HIDE_URI), HIDE_URI,
-                     strlen(HIDE_URI))) {
-            char app_name[256] = {0, };  // assuming the application name is not over 256 chars.
-            strncpy(app_name, request_info->uri + strlen(APPS_URI),
-                    ((strlen(request_info->uri) - strlen(RUN_URI) - strlen(HIDE_URI)) - (sizeof(APPS_URI) - 1)));
+        else if (strlen(request_info->uri) > strlen(HIDE_URI) + strlen(RUN_URI) + strlen(APPS_URI)
+                 && !strncmp(request_info->uri + strlen(request_info->uri) - strlen(HIDE_URI), HIDE_URI, strlen(HIDE_URI)))
+        {
+            // Maximum app name length of 255 characters.
+            char app_name[256] = {0, };
+            int appname_len = strlen(request_info->uri) - strlen(RUN_URI) - strlen(HIDE_URI) - strlen(APPS_URI);
+            if (appname_len > 255) {
+                appname_len = 255;
+            }
+            strncpy(app_name, request_info->uri + strlen(APPS_URI), appname_len);
 
             if (!strcmp(request_info->request_method, "OPTIONS")) {
                 return options_response(ds, conn, host_header, origin_header, app_name, "POST, OPTIONS");
             }
             
-            if (app_name[0] != '\0'                
-                && !strcmp(request_info->request_method, "POST")) {
+            if (app_name[0] != '\0' && !strcmp(request_info->request_method, "POST")) {
                 handle_app_hide(conn, request_info, app_name, origin_header);
-            }else{
-                mg_send_http_error(conn, 501, "Not Implemented",
-                                   "Not Implemented");
+            } else {
+                mg_send_http_error(conn, 501, "Not Implemented", "Not Implemented");
             }
         }
         // URI is of the form */app_name/dial_data
@@ -607,18 +694,20 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
             inet_ntop(addr->sin_family, &addr->sin_addr, laddr, sizeof(laddr));
             if ( !strncmp(laddr, gLocalhost, strlen(gLocalhost)) ) {
                 char *app_name = parse_app_name(request_info->uri);
+                if (app_name == NULL) {
+                    mg_send_http_error(conn, 500, "Internal Error", "Internal Error");
+                } else {
+                    if (!strcmp(request_info->request_method, "OPTIONS")) {
+                        void *ret = options_response(ds, conn, host_header, origin_header, app_name, "POST, OPTIONS");
+                        free(app_name);
+                        return ret;
+                    }
+                    int use_payload = strcmp(request_info->request_method, "POST") ? 0 : 1;
+                    handle_dial_data(conn, request_info, app_name, origin_header,
+                                     use_payload);
 
-                if (!strcmp(request_info->request_method, "OPTIONS")) {
-                    void *ret = options_response(ds, conn, host_header, origin_header, app_name, "POST, OPTIONS");
                     free(app_name);
-                    return ret;
                 }
-                int use_payload =
-                    strcmp(request_info->request_method, "POST") ? 0 : 1;
-                handle_dial_data(conn, request_info, app_name, origin_header,
-                                 use_payload);
-
-                free(app_name);
             } else {
                 // If the request is not from local host, return an error
                 mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
@@ -636,12 +725,19 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
 
 DIALServer *DIAL_create() {
     DIALServer *ds = calloc(1, sizeof(DIALServer));
-    pthread_mutex_init(&ds->mux, NULL);
+    if (ds == NULL) {
+        return NULL;
+    }
+    if (pthread_mutex_init(&ds->mux, NULL) != 0) {
+        free(ds); ds = NULL;
+        return NULL;
+    }
     return ds;
 }
 
-void DIAL_start(DIALServer *ds) {
+int DIAL_start(DIALServer *ds) {
     ds->ctx = mg_start(&request_handler, ds, DIAL_PORT);
+    return (ds->ctx != NULL);
 }
 
 void DIAL_stop(DIALServer *ds) {
@@ -663,51 +759,60 @@ int DIAL_register_app(DIALServer *ds, const char *app_name,
                       int useAdditionalData,
                       const char* corsAllowedOrigin) {
     DIALApp **ptr, *app;
-    int ret;
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        return -1;
+    }
     ptr = find_app(ds, app_name);
     if (*ptr != NULL) {  // app already registered
-        ret = 0;
+        ds_unlock(ds);
+        return 0;
     } else {
         app = malloc(sizeof(DIALApp));
+        if (app == NULL) {
+            ds_unlock(ds);
+            return -1;
+        }
         app->callbacks = *callbacks;
         app->name = strdup(app_name);
+        if (app->name == NULL) {
+            free(app); app = NULL;
+            ds_unlock(ds);
+            return -1;
+        }
         app->next = *ptr;
         app->state = kDIALStatusStopped;
         app->callback_data = user_data;
         app->dial_data = retrieve_dial_data(app->name);
         app->useAdditionalData = useAdditionalData;
         app->corsAllowedOrigin[0] = '\0';
-        if (corsAllowedOrigin &&
-            strlen(corsAllowedOrigin) < sizeof(app->corsAllowedOrigin)) {
-          strcpy(app->corsAllowedOrigin, corsAllowedOrigin);
+        if (corsAllowedOrigin && strlen(corsAllowedOrigin) < sizeof(app->corsAllowedOrigin)) {
+            strcpy(app->corsAllowedOrigin, corsAllowedOrigin);
         }
         *ptr = app;
-        ret = 1;
+        ds_unlock(ds);
+        return 1;
     }
-    ds_unlock(ds);
-    return ret;
 }
 
 int DIAL_unregister_app(DIALServer *ds, const char *app_name) {
     DIALApp **ptr, *app;
-    int ret;
 
-    ds_lock(ds);
+    if (!ds_lock(ds)) {
+        return -1;
+    }
     ptr = find_app(ds, app_name);
     if (*ptr == NULL) {  // no such app
-        ret = 0;
+        ds_unlock(ds);
+        return 0;
     } else {
         app = *ptr;
         *ptr = app->next;
-        free(app->name);
-        free(app);
-        ret = 1;
+        free(app->name); app->name = NULL;
+        free(app); app = NULL;
+        ds_unlock(ds);
+        return 1;
     }
-
-    ds_unlock(ds);
-    return ret;
 }
 
 const char * DIAL_get_payload(DIALServer *ds, const char *app_name) {

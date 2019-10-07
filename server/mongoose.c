@@ -37,6 +37,10 @@
 #ifndef BUFSIZ
 #define BUFSIZ  4096
 #endif
+#ifndef REASON_SIZ
+/* REASON_SIZ must be non-trivially smaller than BUFSIZ. */
+#define REASON_SIZ  2048
+#endif
 
 #define MAX_REQUEST_SIZE 4096
 #define NUM_THREADS 4
@@ -214,32 +218,11 @@ static int mg_snprintf(struct mg_connection *conn, char *buf, size_t buflen,
 // Skip the characters until one of the delimiters characters found.
 // 0-terminate resulting word. Skip the delimiter and following whitespaces if any.
 // Advance pointer to buffer to the next word. Return found 0-terminated word.
-// Delimiters can be quoted with quotechar.
-static char *skip_quoted(char **buf, const char *delimiters, const char *whitespace, char quotechar) {
+static char *skip_quoted(char **buf, const char *delimiters, const char *whitespace) {
   char *p, *begin_word, *end_word, *end_whitespace;
 
   begin_word = *buf;
   end_word = begin_word + strcspn(begin_word, delimiters);
-
-  /* Check for quotechar */
-  if (end_word > begin_word) {
-    p = end_word - 1;
-    while (*p == quotechar) {
-      /* If there is anything beyond end_word, copy it */
-      if (*end_word == '\0') {
-        *p = '\0';
-        break;
-      } else {
-        size_t end_off = strcspn(end_word + 1, delimiters);
-        memmove (p, end_word, end_off + 1);
-        p += end_off; /* p must correspond to end_word - 1 */
-        end_word += end_off + 1;
-      }
-    }
-    for (p++; p < end_word; p++) {
-      *p = '\0';
-    }
-  }
 
   if (*end_word == '\0') {
     *buf = end_word;
@@ -259,7 +242,7 @@ static char *skip_quoted(char **buf, const char *delimiters, const char *whitesp
 // Simplified version of skip_quoted without quote char
 // and whitespace == delimiters
 static char *skip(char **buf, const char *delimiters) {
-  return skip_quoted(buf, delimiters, delimiters, 0);
+  return skip_quoted(buf, delimiters, delimiters);
 }
 
 
@@ -296,7 +279,14 @@ void mg_send_http_error(struct mg_connection *conn, int status,
 
   /* Errors 1xx, 204 and 304 MUST NOT send a body */
   if (status > 199 && status != 204 && status != 304) {
-    len = mg_snprintf(conn, buf, sizeof(buf), "Error %d: %s", status, reason);
+    // If reason is really long, buf will have been completely filled up.
+    // Then buf[len] = '\n' will replace the trailing NULL with '\n' and kill buf
+    // as a string. Plus the next call to mg_vsnprintf() will be writing to an
+    // invalid location and negative (gigantic because size_t is unsigned) size.
+    //
+    // Given how this function is called, the safest thing to do is probably to
+    // require reason remains relatively short and will get truncated.
+    len = mg_snprintf(conn, buf, REASON_SIZ, "Error %d: %s", status, reason);
     cry(conn, "%s", buf);
     buf[len++] = '\n';
 
@@ -332,13 +322,11 @@ static int start_thread(struct mg_context *ctx, mg_thread_func_t func,
   return retval;
 }
 
-static int set_non_blocking_mode(SOCKET sock) {
+static void set_non_blocking_mode(SOCKET sock) {
   int flags;
 
   flags = fcntl(sock, F_GETFL, 0);
   (void) fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-
-  return 0;
 }
 
 // Write data to the IO channel - opened file descriptor, socket or SSL
@@ -350,8 +338,8 @@ static int64_t push(FILE *fp, SOCKET sock, const char *buf, int64_t len) {
   sent = 0;
   while (sent < len) {
 
-    /* How many bytes we send in this iteration */
-    k = len - sent > INT_MAX ? INT_MAX : (int) (len - sent);
+    /* How many bytes should we send in this iteration */
+    k = ((len - sent) > INT_MAX) ? INT_MAX : (int) (len - sent);
 
     if (fp != NULL) {
       n = fwrite(buf + sent, 1, (size_t)k, fp);
@@ -458,9 +446,10 @@ static size_t url_decode(const char *src, size_t src_len, char *dst,
 #define HEXTOI(x) (isdigit(x) ? x - '0' : x - 'W')
 
   for (i = j = 0; i < src_len && j < dst_len - 1; i++, j++) {
-    if (src[i] == '%' &&
+    if (src[i] == '%' && (i + 2 < src_len) &&
         isxdigit(* (const unsigned char *) (src + i + 1)) &&
-        isxdigit(* (const unsigned char *) (src + i + 2))) {
+        isxdigit(* (const unsigned char *) (src + i + 2)))
+    {
       a = tolower(* (const unsigned char *) (src + i + 1));
       b = tolower(* (const unsigned char *) (src + i + 2));
       dst[j] = (char) ((HEXTOI(a) << 4) | HEXTOI(b));
@@ -490,6 +479,7 @@ static int get_request_len(const char *buf, int buflen) {
     // Control characters are not allowed but >=128 is.
     if (!isprint(* (const unsigned char *) s) && *s != '\r' &&
         *s != '\n' && * (const unsigned char *) s < 128) {
+      // FIXME: Why doesn't this immediately return as malformed?
       len = -1;
     } else if (s[0] == '\n' && s[1] == '\n') {
       len = (int) (s - buf) + 2;
@@ -529,7 +519,7 @@ static void parse_http_headers(char **buf, struct mg_request_info *ri) {
   int i;
 
   for (i = 0; i < (int) ARRAY_SIZE(ri->http_headers); i++) {
-    ri->http_headers[i].name = skip_quoted(buf, ":", " ", 0);
+    ri->http_headers[i].name = skip_quoted(buf, ":", " ");
     ri->http_headers[i].value = skip(buf, "\r\n");
     if (ri->http_headers[i].name[0] == '\0')
       break;
@@ -637,6 +627,8 @@ static int set_ports_option(struct mg_context *ctx, int port) {
   tv.tv_sec = 0;
   tv.tv_usec = 500 * 1000;
 
+  // TODO This code calls close(INVALID_SOCKET), even though close expects positive file descriptors.
+  // Not sure what the behavior is as a result, might be fine.
   if ((ctx->local_socket = socket(PF_INET, SOCK_STREAM, 6)) == INVALID_SOCKET ||
       setsockopt(ctx->local_socket, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) != 0 ||
       setsockopt(ctx->local_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0 ||
@@ -702,22 +694,28 @@ static void close_connection(struct mg_connection *conn) {
 }
 
 static void discard_current_request_from_buffer(struct mg_connection *conn) {
-  int buffered_len, body_len;
+  int buffered_len;
+  int64_t remaining = 0, pull_len = 0, count = 0;
+  char discard_buffer[16384];
 
   buffered_len = conn->data_len - conn->request_len;
   assert(buffered_len >= 0);
 
-  if (conn->content_len == -1) {
-    body_len = 0;
-  } else if (conn->content_len < (int64_t) buffered_len) {
-    body_len = (int) conn->content_len;
-  } else {
-    body_len = buffered_len;
+  // If there was no specified Content-Length header, then there's no way for
+  // us to know how much more data needs to be discarded.
+  //
+  // Otherwise keep pull()-ing content until we consume the full content length.
+  if (conn->content_len != -1 && conn->consumed_content < conn->content_len) {
+    remaining = conn->content_len - conn->consumed_content;
+    while (remaining > 0) {
+      pull_len = (remaining < sizeof(discard_buffer)) ? remaining : sizeof(discard_buffer);
+      count = mg_read(conn, discard_buffer, pull_len);
+      if (count <= 0) {
+	break;
+      }
+      remaining -= count;
+    }
   }
-
-  conn->data_len -= conn->request_len + body_len;
-  memmove(conn->buf, conn->buf + conn->request_len + body_len,
-          (size_t) conn->data_len);
 }
 
 static void process_new_connection(struct mg_connection *conn) {
@@ -731,7 +729,7 @@ static void process_new_connection(struct mg_connection *conn) {
     conn->request_len = read_request(conn->client.sock,
         conn->buf, conn->buf_size, &conn->data_len);
   }
-  assert(conn->data_len >= conn->request_len && conn->request_len > 1);
+  assert(conn->data_len >= conn->request_len);
   if (conn->request_len == 0 && conn->data_len == conn->buf_size) {
     mg_send_http_error(conn, 413, "Request Too Large", "");
     return;
@@ -739,7 +737,7 @@ static void process_new_connection(struct mg_connection *conn) {
     return;  // Remote end closed the connection
   }
 
-  // Nul-terminate the request cause parse_http_request() uses sscanf
+  // Null-terminate the request because parse_http_request() uses sscanf
   conn->buf[conn->request_len - 1] = '\0';
   if (!parse_http_request(conn->buf, ri)) {
     // Do not put garbage in the access log, just send it back to the client
@@ -752,6 +750,11 @@ static void process_new_connection(struct mg_connection *conn) {
     // Request is valid, handle it
     cl = get_header(ri, "Content-Length");
     conn->content_len = cl == NULL ? -1 : strtoll(cl, NULL, 10);
+    if (cl != NULL && conn->content_len < 0) {
+        mg_send_http_error(conn, 400, "Bad Request",
+            "Invalid Content-Length header value: [%s]", cl);
+        return;
+    }
     conn->birth_time = time(NULL);
     handle_request(conn);
     discard_current_request_from_buffer(conn);
@@ -800,9 +803,6 @@ static void worker_thread(struct mg_context *ctx) {
   // required in the DIAL specification.
   int buf_size = MAX_REQUEST_SIZE;
 
-#ifndef __APPLE__
-  pthread_setname_np( pthread_self(), __func__);
-#endif
   conn = (struct mg_connection *) calloc(1, sizeof(*conn) + buf_size);
   conn->buf_size = buf_size;
   conn->buf = (char *) (conn + 1);
@@ -820,16 +820,22 @@ static void worker_thread(struct mg_context *ctx) {
 
     // Fill in local IP info
     socklen_t addr_len = sizeof(conn->request_info.local_addr);
-    getsockname(conn->client.sock,
-        (struct sockaddr *) &conn->request_info.local_addr, &addr_len);
-
-    process_new_connection(conn);
+    if (getsockname(conn->client.sock, (struct sockaddr *) &conn->request_info.local_addr, &addr_len) != 0) {
+      // Something went wrong.
+      mg_send_http_error(conn, 500, "Internal Server Error", "");
+    } else {
+      process_new_connection(conn);
+    }
 
     close_connection(conn);
   }
   free(conn);
 
-  // Signal master that we're done with connection and exiting
+  // Signal master that we're done with connection and exiting.
+  //
+  // It is possible that we fail to acquire the mutex and then num_threads will
+  // end up decrementing incorrectly which may cause the server to hang
+  // indefinitely while trying to shutdown. But we'll try our best.
   (void) pthread_mutex_lock(&ctx->mutex);
   ctx->num_threads--;
   (void) pthread_cond_signal(&ctx->cond);
@@ -839,13 +845,25 @@ static void worker_thread(struct mg_context *ctx) {
   DEBUG_TRACE(("exiting"));
 }
 
-// Master thread adds accepted socket to a queue
-static void produce_socket(struct mg_context *ctx, const struct socket *sp) {
-  (void) pthread_mutex_lock(&ctx->mutex);
+/**
+ * Copy an accepted socket onto the queue. Blocks if the queue is full. This
+ * function is called from the master thread.
+ *
+ * @param ctx Mongoose context.
+ * @param sp the socket.
+ * @return true if successful, false if there was a mutex error.
+ */
+static int produce_socket(struct mg_context *ctx, const struct socket *sp) {
+  if (pthread_mutex_lock(&ctx->mutex) != 0) {
+    return 0;
+  };
 
   // If the queue is full, wait
   while (ctx->sq_head - ctx->sq_tail >= (int) ARRAY_SIZE(ctx->queue)) {
-    (void) pthread_cond_wait(&ctx->sq_empty, &ctx->mutex);
+      if (pthread_cond_wait(&ctx->sq_empty, &ctx->mutex) != 0) {
+          (void) pthread_mutex_unlock(&ctx->mutex);
+          return 0;
+      };
   }
   assert(ctx->sq_head - ctx->sq_tail < (int) ARRAY_SIZE(ctx->queue));
 
@@ -854,17 +872,16 @@ static void produce_socket(struct mg_context *ctx, const struct socket *sp) {
   ctx->sq_head++;
   DEBUG_TRACE(("queued socket %d", sp->sock));
 
+  // Nothing to do if there is an error on signal. But if we fail to unlock
+  // then we're in a bad state.
   (void) pthread_cond_signal(&ctx->sq_full);
-  (void) pthread_mutex_unlock(&ctx->mutex);
+  return (pthread_mutex_unlock(&ctx->mutex) == 0);
 }
 
 
 static void master_thread(struct mg_context *ctx) {
   struct socket accepted;
 
-#ifndef __APPLE__
-  pthread_setname_np( pthread_self(), __func__);
-#endif
   socklen_t sock_len = sizeof(accepted.local_addr);
   memcpy(&accepted.local_addr, &ctx->local_address, sock_len);
 
@@ -877,7 +894,10 @@ static void master_thread(struct mg_context *ctx) {
     if (accepted.sock != INVALID_SOCKET) {
       // Put accepted socket structure into the queue.
       DEBUG_TRACE(("accepted socket %d", accepted.sock));
-      produce_socket(ctx, &accepted);
+      // If the socket fails, trigger stop and try to exit gracefully.
+      if (!produce_socket(ctx, &accepted)) {
+        ctx->stop_flag = 1;
+      };
     }
   }
   DEBUG_TRACE(("stopping workers"));
@@ -886,14 +906,18 @@ static void master_thread(struct mg_context *ctx) {
   close_all_listening_sockets(ctx);
 
   // Wakeup workers that are waiting for connections to handle.
-  pthread_cond_broadcast(&ctx->sq_full);
+  // Nothing we can do if there is an error.
+  (void) pthread_cond_broadcast(&ctx->sq_full);
 
-  // Wait until all threads finish
-  (void) pthread_mutex_lock(&ctx->mutex);
-  while (ctx->num_threads > 0) {
-    (void) pthread_cond_wait(&ctx->cond, &ctx->mutex);
+  // Wait until all threads finish.
+  // If we cannot acquire the lock, we're in a bad state so skip this and
+  // just try to clean up and shut down.
+  if (pthread_mutex_lock(&ctx->mutex) == 0) {
+    while (ctx->num_threads > 0) {
+      (void) pthread_cond_wait(&ctx->cond, &ctx->mutex);
+    }
+    (void) pthread_mutex_unlock(&ctx->mutex);
   }
-  (void) pthread_mutex_unlock(&ctx->mutex);
 
   // All threads exited, no sync is needed. Destroy mutex and condvars
   (void) pthread_mutex_destroy(&ctx->mutex);
@@ -925,10 +949,13 @@ void mg_stop(struct mg_context *ctx) {
 
 struct mg_context *mg_start(mg_callback_t user_callback, void *user_data, int port) {
   struct mg_context *ctx;
-
+  int retval;
+  
   // Allocate context and initialize reasonable general case defaults.
-  // TODO(lsm): do proper error handling here.
   ctx = (struct mg_context *) calloc(1, sizeof(*ctx));
+  if (ctx == NULL) {
+    return NULL;
+  }
   ctx->user_callback = user_callback;
   ctx->user_data = user_data;
 
@@ -937,15 +964,26 @@ struct mg_context *mg_start(mg_callback_t user_callback, void *user_data, int po
     return NULL;
   }
   // Ignore SIGPIPE signal, so if browser cancels the request, it
-  // won't kill the whole process.
-  (void) signal(SIGPIPE, SIG_IGN);
-  (void) pthread_mutex_init(&ctx->mutex, NULL);
-  (void) pthread_cond_init(&ctx->cond, NULL);
-  (void) pthread_cond_init(&ctx->sq_empty, NULL);
-  (void) pthread_cond_init(&ctx->sq_full, NULL);
+  // won't kill the whole
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+    free_context(ctx);
+    return NULL;
+  };
+  if (pthread_mutex_init(&ctx->mutex, NULL) != 0 ||
+      pthread_cond_init(&ctx->cond, NULL) != 0 ||
+      pthread_cond_init(&ctx->sq_empty, NULL) != 0 ||
+      pthread_cond_init(&ctx->sq_full, NULL) != 0)
+  {
+    free_context(ctx);
+    return NULL;
+  };
 
   // Start master (listening) thread
-  start_thread(ctx, (mg_thread_func_t) master_thread, ctx);
+  retval = start_thread(ctx, (mg_thread_func_t) master_thread, ctx);
+  if (retval != 0) {
+    free_context(ctx);
+    return NULL;
+  }
 
   // Start worker threads
   for (int i = 0; i < NUM_THREADS; i++) {
