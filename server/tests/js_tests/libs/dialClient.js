@@ -142,6 +142,40 @@ function launchApplication(host, app, payload) {
       });
 }
 
+/*
+ * send HTTP request to the host.
+ *
+ * @param {String} host          IP address of host on which DIAL server
+ * @param {String} method        HTTP method.
+ * @param {Object} headers       HTTP headers, passed as {"Header": Value}
+ * @param {String} urlSuffix     appended to the URL
+ * @param {String} body          HTTP body
+ */
+function sendRequest(host, method, headers, urlSuffix, body) {
+    urlSuffix = urlSuffix || "";
+
+    return new Q()
+        .then(getAppsUrl.bind(null, host))
+        .then(function (appUrl) {
+            var request = {
+                url: encodeURI(appUrl + urlSuffix),
+                method: method,
+                timeout: 6000,
+                headers: headers
+            };
+            request.body = body;
+            return new Q.Promise(function (resolve, reject) {
+                return httpRequest(request, function handleResponse(error, response) {
+                    if(error) {
+                        reject(error);
+                    } else {
+                        resolve(response);
+                    }
+                });
+            });
+        });
+}
+
 function sleepSystem(host, key) {
     var keyComponent = key ? `&key=${key}` : '';
     return getAppsUrl(host)
@@ -279,7 +313,7 @@ function constructAppResourceUrl(host, appName) {
     return new Q()
       .then(getAppsUrl.bind(null, host))
       .then(function (appUrl) {
-          return appUrl.replace(/\/+$/, `/${appName}`);
+          return appUrl.replace(/\/*$/, `/${appName}`);
       });
 }
 
@@ -424,3 +458,4 @@ module.exports.constructAppResourceUrl  = constructAppResourceUrl;
 module.exports.getAppsUrl               = getAppsUrl;
 module.exports.getLocation              = getLocation;
 module.exports.sleepSystem              = sleepSystem;
+module.exports.sendRequest              = sendRequest;

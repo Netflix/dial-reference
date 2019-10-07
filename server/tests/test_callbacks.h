@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,9 +22,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SRC_SERVER_TESTS_TEST_URL_LIB_H_
-#define SRC_SERVER_TESTS_TEST_URL_LIB_H_
+#ifndef SRC_SERVER_TESTS_TEST_CALLBACKS_H_
+#define SRC_SERVER_TESTS_TEST_CALLBACKS_H_
 
-void test_url_lib_suite();
+void test_callbacks_suite();
 
-#endif /* SRC_SERVER_TESTS_TEST_URL_LIB_H_ */
+#endif /* SRC_SERVER_TESTS_TEST_CALLBACKS_H_ */
