@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Netflix, Inc.
+ * Copyright (c) 2018-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,11 @@
 
 #include "dial_server.h"
 
+/**
+ *
+ *
+ * Sleep is the only supported action for 'system', and not implemented in this reference.
+ */
 DIALStatus system_start(DIALServer *ds, const char *appname,
                             const char *payload, const char* query_string,
                             const char *additionalDataUrl,

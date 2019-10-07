@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -59,7 +59,9 @@ typedef enum {
 #define DIAL_MAX_PAYLOAD (4096)
 
 /*
- * The maximum additionalDataUrl length
+ * The maximum additionalDataUrl length.
+ *
+ * There is no value defined in the DIAL specification.
  */
 
 #define DIAL_MAX_ADDITIONALURL (1024)
@@ -120,6 +122,8 @@ DIALServer *DIAL_create();
  * Starts the DIAL server.
  *
  * @param[in] ds DIAL server handle
+ * @return true if the DIAL server was started and the DIAL server handle
+ *         now contains a valid Mongoose context.
  */
 int DIAL_start(DIALServer *ds);
 
@@ -141,7 +145,7 @@ void DIAL_stop(DIALServer *ds);
  * @param[in] if non-0, the app supports DIALadditionalDataURL.
  * @param[in] if non-NULL, specifies the CORS allowed origin for this app.
  *
- * @return 1 if successful, 0 otherwise
+ * @return 1 if successful, 0 if already registered, -1 on error.
  */
 int DIAL_register_app(DIALServer *ds, const char *app_name,
                       struct DIALAppCallbacks *callbacks,
@@ -154,7 +158,7 @@ int DIAL_register_app(DIALServer *ds, const char *app_name,
  * @param[in] ds DIAL server handle
  * @param[in] app_name Name of the DIAL application
  *
- * @return 1 if successful, 0 otherwise
+ * @return 1 if successful, 0 if not found, -1 on error.
  */
 int DIAL_unregister_app(DIALServer *ds, const char *app_name);
 

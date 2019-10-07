@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,13 @@ void set_dial_data_dir(const char *data_dir) {
 
 /**
  * Returns the path where data is stored for the given app.
+ *
+ * The DIAL data directory must have been already set.
+ *
+ * @param app_name application name.
+ * @return the location of the application path within the DIAL data
+ *         directory or NULL if memory could not be allocated.
+ * @see set_dial_data_dir(const char*)
  */
 static char* getAppPath(char *app_name) {
     size_t name_size = strlen(app_name) + sizeof(dial_data_dir) + 1;

@@ -304,6 +304,14 @@ void mg_send_http_error(struct mg_connection *conn, int status,
   conn->num_bytes_sent += mg_printf(conn, "%s", buf);
 }
 
+/**
+ * Create a new thread.
+ *
+ * @param ctx Mongoose context.
+ * @param func thread function.
+ * @param param thread function arguments.
+ * @return the return value of pthread_create.
+ */
 static int start_thread(struct mg_context *ctx, mg_thread_func_t func,
                         void *param) {
   pthread_t thread_id;

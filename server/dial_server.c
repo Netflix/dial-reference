@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -94,8 +94,14 @@ static int ds_unlock(DIALServer *ds) {
     return 1;
 }
 
-// finds an app and returns a pointer to the previous element's next pointer
-// if not found, return a pointer to the last element's next pointer
+/**
+ * Finds an application in the DIAL server application linked list.
+ *
+ * @param ds the DIAL server.
+ * @param app_name application name.
+ * @return a pointer to the DIAL application; the pointer value may be NULL if
+ *         the application was not found.
+ */
 static DIALApp **find_app(DIALServer *ds, const char *app_name) {
     DIALApp *app;
     DIALApp **ret = &ds->apps;
@@ -129,9 +135,13 @@ static int url_decode_xml_encode(char *dst, char *src, size_t src_size) {
     return 1;
 }
 
-/*
- * A bad payload is defined to be an unprintable character or a
- * non-ascii character.
+/**
+ * Checks if a payload string contains invalid characters.
+ *
+ * @param pPayload payload string.
+ * @param numBytes length of payload string in bytes (excluding trailing NULL).
+ *
+ * @return 1 if the payload contains an unprintable or non-ASCII character.
  */
 static int isBadPayload(const char* pPayload, int numBytes) {
     int i = 0;
