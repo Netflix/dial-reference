@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -69,14 +69,30 @@ struct DIALServer_ {
 
 static void ds_lock(DIALServer *ds) {
     pthread_mutex_lock(&ds->mux);
+/**
+ * Acquire the DIAL server mutex.
+ *
+ * @return 1 if acquisition succeeded, 0 if it failed.
+ */
 }
 
 static void ds_unlock(DIALServer *ds) {
     pthread_mutex_unlock(&ds->mux);
+/**
+ * Release the DIAL server mutex.
+ *
+ * @return 1 if release succeeded, 0 if it failed.
+ */
 }
 
-// finds an app and returns a pointer to the previous element's next pointer
-// if not found, return a pointer to the last element's next pointer
+/**
+ * Finds an application in the DIAL server application linked list.
+ *
+ * @param ds the DIAL server.
+ * @param app_name application name.
+ * @return a pointer to the DIAL application; the pointer value may be NULL if
+ *         the application was not found.
+ */
 static DIALApp **find_app(DIALServer *ds, const char *app_name) {
     DIALApp *app;
     DIALApp **ret = &ds->apps;
@@ -90,15 +106,29 @@ static DIALApp **find_app(DIALServer *ds, const char *app_name) {
 }
 
 static void url_decode_xml_encode(char *dst, char *src, size_t src_size) {
+/**
+ * URL-unescape the string, then XML-escape it.
+ *
+ * @param dst the destination XML-escaped string. Must be large enough for
+ *        the resulting string (technically as much as 6x the raw string
+ *        length based on the implementation in url_lib.c).
+ * @param src the URL-escaped string.
+ * @param src_size size of the URL-escaped string, including trailing NULL.
+ * @return true if successful, false if out-of-memory.
+ */
     char *url_decoded_key = (char *) malloc(src_size + 1);
     urldecode(url_decoded_key, src, src_size);
     xmlencode(dst, url_decoded_key, 2 * src_size);
     free(url_decoded_key);
 }
 
-/*
- * A bad payload is defined to be an unprintable character or a
- * non-ascii character.
+/**
+ * Checks if a payload string contains invalid characters.
+ *
+ * @param pPayload payload string.
+ * @param numBytes length of payload string in bytes (excluding trailing NULL).
+ *
+ * @return 1 if the payload contains an unprintable or non-ASCII character.
  */
 static int isBadPayload(const char* pPayload, int numBytes) {
     int i = 0;

@@ -314,6 +314,14 @@ void mg_send_http_error(struct mg_connection *conn, int status,
   conn->num_bytes_sent += mg_printf(conn, "%s", buf);
 }
 
+/**
+ * Create a new thread.
+ *
+ * @param ctx Mongoose context.
+ * @param func thread function.
+ * @param param thread function arguments.
+ * @return the return value of pthread_create.
+ */
 static int start_thread(struct mg_context *ctx, mg_thread_func_t func,
                         void *param) {
   pthread_t thread_id;
@@ -839,9 +847,16 @@ static void worker_thread(struct mg_context *ctx) {
   DEBUG_TRACE(("exiting"));
 }
 
-// Master thread adds accepted socket to a queue
 static void produce_socket(struct mg_context *ctx, const struct socket *sp) {
   (void) pthread_mutex_lock(&ctx->mutex);
+/**
+ * Copy an accepted socket onto the queue. Blocks if the queue is full. This
+ * function is called from the master thread.
+ *
+ * @param ctx Mongoose context.
+ * @param sp the socket.
+ * @return true if successful, false if there was a mutex error.
+ */
 
   // If the queue is full, wait
   while (ctx->sq_head - ctx->sq_tail >= (int) ARRAY_SIZE(ctx->queue)) {

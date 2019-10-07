@@ -123,3 +123,19 @@ Options:
 ```
 Log file of test run is written in js_tests_log.txt in the
 server/tests/js_tests/tests folder.
+
+This reference does not provide code for sleeping an app, so
+tests that involve sleeping an app will fail.
+
+There is also a test suite for lightly testing how the implementation handles edge cases.
+this can be run with:
+```
+server/tests/js_tests/tests$ node testEdgeCases.js 
+
+Usage: node testEdgeCases.js[options]
+
+Options:
+  --host      IP address of host on which DIAL server under test is running
+                                                             [string] [required]
+  --help, -h  Show help                                                [boolean]
+```

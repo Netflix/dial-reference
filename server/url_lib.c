@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,16 @@ char* smartstrcat(char* dest, char* src, size_t max_chars) {
     return dest;
 }
 
+/**
+ * Convert a two-character hex representation into its ASCII equivalent
+ * and copy it into dest.
+ *
+ * @param dest the destination character buffer.
+ * @param a the first hex character.
+ * @param b the second hex character.
+ * @return 1 if the character was converted and copied, 0 if the hex
+ *         characters are invalid.
+ */
 static int append_char_from_hex(char* dest, char a, char b) {
     if ('a' <= a && a <= 'f')
         a = 10 + a - 'a';

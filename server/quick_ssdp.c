@@ -142,6 +142,20 @@ static void get_local_address() {
 }
 #else
 static void get_local_address() {
+/**
+ * Returns the local hardware address (e.g. MAC address). On macOS the "en0"
+ * interface is used. On other platforms the first non-loopback interface is
+ * used.
+ *
+ * As a side-effect, the local global ip_addr is also populated.
+ *
+ * (Are these choices of interface really the right ones? Seems risky for
+ * multi-homed systems.)
+ *
+ * @return the local hardware address or NULL if it does not exist, cannot
+ *         be retrieved, or out-of-memory. The caller must free the returned
+ *         memory.
+ */
     struct ifconf ifc;
     char buf[4096];
     int s, i;
