@@ -37,7 +37,6 @@
 
 #include "mongoose.h"
 #include "url_lib.h"
-#include "LinuxInterfaces.h"
 
 // TODO: Partners should define this port
 #define DIAL_PORT (56789)
