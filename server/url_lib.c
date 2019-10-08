@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2019 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,15 +30,29 @@
 #include <ctype.h>
 #include <string.h>
 
-char* smartstrcat(char* dest, char* src, size_t max_chars) {
-    size_t copied = 0;
-    while ((*(dest++) = *(src++)) && copied++ < max_chars) {
+static const char * unknown_str = "unknown";
+
+char* smartstrncpy(char* dest, char* src, size_t max_chars) {
+    size_t copied;
+    for (copied = 0; copied < max_chars; copied++, dest++, src++) {
+        *dest = *src;
+        if (*dest == 0)
+            break;
     }
-    // In case we over-stepped the size, end the string nicely.
-    *(--dest) = '\0';
+    *dest = 0;
     return dest;
 }
 
+/**
+ * Convert a two-character hex representation into its ASCII equivalent
+ * and copy it into dest.
+ *
+ * @param dest the destination character buffer.
+ * @param a the first hex character.
+ * @param b the second hex character.
+ * @return 1 if the character was converted and copied, 0 if the hex
+ *         characters are invalid.
+ */
 static int append_char_from_hex(char* dest, char a, char b) {
     if ('a' <= a && a <= 'f')
         a = 10 + a - 'a';
@@ -89,23 +103,33 @@ void xmlencode(char *dst, const char *src, size_t max_size) {
     while (*src && current_size < max_size) {
         switch (*src) {
             case '&':
-                dst = smartstrcat(dst, "&amp;", max_size - current_size);
+                if (current_size + 5 >= max_size)
+                    break;
+                dst = smartstrncpy(dst, "&amp;", max_size - current_size);
                 current_size += 5;
                 break;
             case '\"':
-                dst = smartstrcat(dst, "&quot;", max_size - current_size);
+                if (current_size + 6 >= max_size)
+                    break;
+                dst = smartstrncpy(dst, "&quot;", max_size - current_size);
                 current_size += 6;
                 break;
             case '\'':
-                dst = smartstrcat(dst, "&apos;", max_size - current_size);
+                if (current_size + 6 >= max_size)
+                    break;
+                dst = smartstrncpy(dst, "&apos;", max_size - current_size);
                 current_size += 6;
                 break;
             case '<':
-                dst = smartstrcat(dst, "&lt;", max_size - current_size);
+                if (current_size + 4 >= max_size)
+                    break;
+                dst = smartstrncpy(dst, "&lt;", max_size - current_size);
                 current_size += 4;
                 break;
             case '>':
-                dst = smartstrcat(dst, "&gt;", max_size - current_size);
+                if (current_size + 4 >= max_size)
+                    break;
+                dst = smartstrncpy(dst, "&gt;", max_size - current_size);
                 current_size += 4;
                 break;
             default:
@@ -119,18 +143,34 @@ void xmlencode(char *dst, const char *src, size_t max_size) {
 }
 
 char *parse_app_name(const char *uri) {
+    char *unknown = NULL;
     if (uri == NULL) {
-        return "unknown";
+        unknown = (char*)calloc(strlen(unknown_str) + 1, sizeof(char));
+        if (unknown == NULL) {
+            return NULL;
+        }
+        strncpy(unknown, unknown_str, strlen(unknown_str) + 1);
+        return unknown;
     }
     char *slash = strrchr(uri, '/');
     if (slash == NULL || slash == uri) {
-        return "unknown";
+        unknown = (char*)calloc(strlen(unknown_str) + 1, sizeof(char));
+        if (unknown == NULL) {
+            return NULL;
+        }
+        strncpy(unknown, unknown_str, strlen(unknown_str) + 1);
+        return unknown;
     }
     char *begin = slash;
     while ((begin != uri) && (*--begin != '/'))
         ;
-    begin++;  // skip the slash
-    char *result = (char *) calloc(1, slash - begin+1);
+    if (*begin == '/') {
+        begin++;  // skip the slash
+    }
+    char *result = (char *) calloc(slash - begin+1, sizeof(char));
+    if (result == NULL) {
+        return NULL;
+    }
     strncpy(result, begin, slash - begin);
     result[slash-begin]='\0';
     return result;
@@ -151,6 +191,9 @@ char *parse_param(char *query_string, char *param_name) {
         end++;
     int result_size = end - start;
     char *result = malloc(result_size + 1);
+    if (result == NULL) {
+        return NULL;
+    }
     result[0] = '\0';
     strncpy(result, start, result_size);
     result[result_size] = '\0';
@@ -165,20 +208,46 @@ DIALData *parse_params(char * query_string) {
         query_string++;  // skip leading question mark
     }
     DIALData *result = NULL;
+    int err = 0;
     char *query_string_dup = strdup(query_string);
     char * name_value = strtok(query_string_dup, "&");
     while (name_value != NULL) {
         DIALData *tmp = (DIALData *) malloc(sizeof(DIALData));
+        if (tmp == NULL) {
+            err = 1;
+            break;
+        }
         size_t name_value_length = strlen(name_value);
-        tmp->key = (char *) malloc(name_value_length);
-        tmp->value = (char *) malloc(name_value_length);
-        sscanf(name_value, "%[^=]=%s", tmp->key, tmp->value);
+        tmp->key = (char *) calloc(name_value_length + 1, sizeof(char));
+        if (tmp->key == NULL) {
+            free(tmp); tmp = NULL;
+            err = 1;
+            break;
+        }
+        tmp->value = (char *) calloc(name_value_length + 1, sizeof(char));
+        if (tmp->value == NULL) {
+            free(tmp->key); tmp->key = NULL;
+            free(tmp); tmp = NULL;
+            err = 1;
+            break;
+        }
+        int match = sscanf(name_value, "%[^=]=%s", tmp->key, tmp->value);
+        if (match != 2) {
+            free(tmp->value); tmp->value = NULL;
+            free(tmp->key); tmp->key = NULL;
+            free(tmp); tmp = NULL;
+            err = 1;
+            break;
+        }
         tmp->next = result;
         result = tmp;
 
         name_value = strtok(NULL, "&");  // read next token
     }
     free(query_string_dup);
+    if (err) {
+        free_dial_data(&result); result = NULL;
+    }
     return result;
 }
 
@@ -194,7 +263,7 @@ char from_hex(char ch) {
 /* Converts an integer value to its hex character*/
 char to_hex(char code) {
     static char hex[] = "0123456789abcdef";
-  return hex[code & 15];
+    return hex[code & 15];
 }
 
 

@@ -29,9 +29,20 @@
 
 #define EXPECT(a, m) \
   do { \
-    if (!a) { \
-      printf("[%s] failed: %s\n", #a, m); \
-      printf("%s -> FAILED\n", __func__); \
+    if (!(a)) { \
+      printf("\033[31m  [%s] failed: %s  \033[0m\n", #a, m); \
+      printf("\033[31m  %s -> FAILED  \033[0m\n", __func__); \
+      return; \
+    } \
+  } while (0)
+
+#define EXPECT_EQ(a, b) \
+  do { \
+    if (a != b) { \
+      printf("\033[31m  expected [%s == %s] \033[0m\n", #a, #b); \
+      printf("\033[31m  a = \"%ld\" \033[0m\n", (unsigned long) a); \
+      printf("\033[31m  b = \"%ld\" \033[0m\n", (unsigned long) b); \
+      printf("\033[31m  %s -> FAILED \033[0m\n", __func__); \
       return; \
     } \
   } while (0)
@@ -39,15 +50,18 @@
 #define EXPECT_STREQ(a, b) \
   do { \
     if (strcmp(a, b)) { \
-      printf("expected [%s == %s]\n", #a, #b); \
-      printf(" a = \"%s\"\n", a); \
-      printf(" b = \"%s\"\n", b); \
-      printf("%s -> FAILED\n", __func__); \
+      printf("\033[31m  expected [%s == %s] \033[0m\n", #a, #b); \
+      printf("\033[31m  a = \"%s\" \033[0m\n", a); \
+      printf("\033[31m  b = \"%s\" \033[0m\n", b); \
+      printf("\033[31m  %s -> FAILED \033[0m\n", __func__); \
       return; \
     } \
   } while (0)
 
+#define START_SUITE() \
+  printf("== %s ==\n", __FILE__)
+
 #define DONE() \
-  printf("%s -> OK\n", __func__)
+  printf("\033[32m  %s -> OK \033[0m\n", __func__)
 
 #endif /* SRC_SERVER_TESTS_TEST_H_ */

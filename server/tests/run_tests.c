@@ -22,6 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include "test_callbacks.h"
 #include "test_dial_data.h"
 #include "test_url_lib.h"
 
@@ -29,14 +30,8 @@
 
 
 int main(int argc, char** argv) {
-  printf("====\n");
-  test_smartstrcat();
-  test_urldecode();
-  test_parse_app_name();
-  test_parse_params();
-  printf("====\n");
-  test_read_dial_data();
-  test_write_dial_data();
-  printf("====\n");
-  return 0;
+    test_dial_data_suite();
+    test_url_lib_suite();
+    test_callbacks_suite();
+    return 0;
 }

@@ -78,6 +78,4 @@ Promise.resolve()
     // Application hide tests
     .then(hideInvalidApplicationInstance.test)
     .then(hideApplicationInHiddenState.test)
-    .then(hideApplicationInRunningState.test)
-
-
+    .then(hideApplicationInRunningState.test);

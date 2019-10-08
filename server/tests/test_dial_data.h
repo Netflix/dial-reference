@@ -25,7 +25,6 @@
 #ifndef SRC_SERVER_TESTS_TEST_DIAL_DATA_H_
 #define SRC_SERVER_TESTS_TEST_DIAL_DATA_H_
 
-void test_read_dial_data();
-void test_write_dial_data();
+void test_dial_data_suite();
 
 #endif /* SRC_SERVER_TESTS_TEST_DIAL_DATA_H_ */

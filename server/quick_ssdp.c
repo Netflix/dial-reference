@@ -35,13 +35,6 @@
 #include "mongoose.h"
 #include <stdbool.h>
 
-#ifdef __APPLE__
-#include <ifaddrs.h>
-#include <net/if.h>
-#include <net/if_dl.h>
-#endif
-
-
 // TODO: Partners should define this port
 #define SSDP_PORT (56790)
 static char gBuf[4096];
@@ -85,8 +78,7 @@ static const char ssdp_reply[] = "HTTP/1.1 200 OK\r\n"
 static const char wakeup_header[] = "WAKEUP: MAC=%s;Timeout=%d\r\n";
 #define STR_TIMEOUTLEN 6 /* Longest is 32767 */
 #define HW_ADDRSTRLEN 18
-static char ip_addr[INET_ADDRSTRLEN] = "127.0.0.1";
-static char hw_addr[HW_ADDRSTRLEN] = "00:00:00:00:00:00";
+static char ip_addr[INET6_ADDRSTRLEN] = "127.0.0.1";
 static int dial_port = 0;
 static int my_port = 0;
 static char friendly_name[256];
@@ -115,35 +107,24 @@ static void *request_handler(enum mg_event event,
     return NULL;
 }
 
-#ifdef __APPLE__
-static void get_local_address() {
-    struct ifaddrs* iflist;
-    char *if_name= "en0";
-    char buf[INET6_ADDRSTRLEN];
-
-    if (getifaddrs(&iflist) == 0) {
-        for (struct ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
-          if (strcmp(cur->ifa_name, if_name) == 0) {
-            if ((cur->ifa_addr->sa_family == AF_LINK) && cur->ifa_addr) {
-                unsigned char mac[6];
-                struct sockaddr_dl* sdl = (struct sockaddr_dl*)cur->ifa_addr;
-                memcpy(mac, LLADDR(sdl), sdl->sdl_alen);
-                sprintf(hw_addr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-            }
-
-            if (cur->ifa_addr->sa_family == AF_INET) {
-              void *tmp = &((struct sockaddr_in *)cur->ifa_addr)->sin_addr;
-              strcpy(ip_addr, inet_ntop(cur->ifa_addr->sa_family, tmp, buf, sizeof(buf)));
-            }
-          }
-        }
-        freeifaddrs(iflist);
-    }
-}
-#else
-static void get_local_address() {
+/**
+ * Returns the local hardware address (e.g. MAC address). On macOS the "en0"
+ * interface is used. On other platforms the first non-loopback interface is
+ * used.
+ *
+ * As a side-effect, the local global ip_addr is also populated.
+ *
+ * (Are these choices of interface really the right ones? Seems risky for
+ * multi-homed systems.)
+ *
+ * @return the local hardware address or NULL if it does not exist, cannot
+ *         be retrieved, or out-of-memory. The caller must free the returned
+ *         memory.
+ */
+static char * get_local_address() {
     struct ifconf ifc;
     char buf[4096];
+    char * hw_addr = NULL;
     int s, i;
     if (-1 == (s = socket(AF_INET, SOCK_DGRAM, 0))) {
         perror("socket");
@@ -160,8 +141,8 @@ static void get_local_address() {
         exit(1);
     }
     for (i = 0; i < ifc.ifc_len/sizeof(ifc.ifc_req[0]); i++) {
-        strcpy(ip_addr,
-               inet_ntoa(((struct sockaddr_in *)(&ifc.ifc_req[i].ifr_addr))->sin_addr));
+        strncpy(ip_addr,
+               inet_ntoa(((struct sockaddr_in *)(&ifc.ifc_req[i].ifr_addr))->sin_addr), sizeof(ip_addr) - 1);
         if (0 > ioctl(s, SIOCGIFFLAGS, &ifc.ifc_req[i])) {
             perror("SIOCGIFFLAGS");
             exit(1);
@@ -174,6 +155,14 @@ static void get_local_address() {
             perror("SIOCGIFHWADDR");
             exit(1);
         }
+        // FIXME: How do I figure out what type of interface this is in order to
+        // cast the struct sockaddr ifr_hraddr to the proper type and extract the
+        // hardware address?
+        //
+        // Make sure this is correct for the target device and platform.
+        hw_addr = (char*)malloc(HW_ADDRSTRLEN + 1);
+        if (hw_addr == NULL)
+            break;
         sprintf(hw_addr, "%02x:%02x:%02x:%02x:%02x:%02x",
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[0],
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[1],
@@ -184,14 +173,14 @@ static void get_local_address() {
         break;
     }
     close(s);
+    return hw_addr;
 }
-#endif
 
-static void handle_mcast() {
+static void handle_mcast(char *hw_addr) {
     int s, one = 1, bytes;
     socklen_t addrlen;
-    struct sockaddr_in saddr;
-    struct ip_mreq mreq;
+    struct sockaddr_in saddr = {0};
+    struct ip_mreq mreq = {0};
     char wakeup_buf[sizeof(wakeup_header) + HW_ADDRSTRLEN + STR_TIMEOUTLEN] = {0, };
     char send_buf[sizeof(ssdp_reply) + INET_ADDRSTRLEN + 256 + 256 + sizeof(wakeup_buf)] = {0,};
     int send_size;
@@ -208,11 +197,7 @@ static void handle_mcast() {
         exit(1);
     }
     saddr.sin_family = AF_INET;
-#ifdef __APPLE__
-    saddr.sin_addr.s_addr = INADDR_ANY;
-#else
     saddr.sin_addr.s_addr = inet_addr("239.255.255.250");
-#endif
     saddr.sin_port = htons(1900);
 
     if (-1 == bind(s, (struct sockaddr *)&saddr, sizeof(saddr))) {
@@ -261,32 +246,42 @@ static void handle_mcast() {
 }
 
 void run_ssdp(int port, const char *pFriendlyName, const char * pModelName, const char *pUuid) {
+    char *hw_addr = NULL;
     struct sockaddr sa;
     socklen_t len = sizeof(sa);
     if(pFriendlyName) {
         strncpy(friendly_name, pFriendlyName, sizeof(friendly_name));
-        friendly_name[255] = '\0';
+        friendly_name[sizeof(friendly_name) - 1] = '\0';
     } else {
         strcpy(friendly_name, "DIAL server sample");
     }
     if(pModelName) {
         strncpy(model_name, pModelName, sizeof(model_name));
-        uuid[255] = '\0';
+        model_name[sizeof(model_name) - 1] = '\0';
     } else {
         strcpy(model_name, "deadbeef-dead-beef-dead-beefdeadbeef");
     }
     if(pUuid) {
         strncpy(uuid, pUuid, sizeof(uuid));
-        uuid[255] = '\0';
+        uuid[sizeof(uuid) - 1] = '\0';
     } else {
         strcpy(uuid, "deadbeef-dead-beef-dead-beefdeadbeef");
     }
     dial_port = port;
-    get_local_address();
-    ctx = mg_start(&request_handler, NULL, SSDP_PORT);
-    if (mg_get_listen_addr(ctx, &sa, &len)) {
-        my_port = ntohs(((struct sockaddr_in *)&sa)->sin_port);
+    hw_addr = get_local_address();
+    if (hw_addr == NULL) {
+        printf("Unable to retrieve hardware address.");
+        return;
     }
-    printf("SSDP listening on %s:%d\n", ip_addr, my_port);
-    handle_mcast();
+    ctx = mg_start(&request_handler, NULL, SSDP_PORT);
+    if (ctx == NULL) {
+        printf("Unable to start SSDP master listening thread.");
+    } else {
+        if (mg_get_listen_addr(ctx, &sa, &len)) {
+            my_port = ntohs(((struct sockaddr_in *)&sa)->sin_port);
+        }
+        printf("SSDP listening on %s:%d\n", ip_addr, my_port);
+        handle_mcast(hw_addr);
+    }
+    free(hw_addr); hw_addr = NULL;
 }

@@ -22,10 +22,14 @@ nf_callbacks_lib: nf_callbacks.o
 dialserver: nf_callbacks_lib $(OBJS)
 	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver
 
+
+dialserver_with_ASAN: nf_callbacks_lib $(OBJS)
+	$(CC) -Wall -Werror  -fsanitize=address -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver_with_ASAN
+
 test:
 	make -C tests
 	./tests/run_tests
 
 clean:
-	rm -f *.o dialserver *.so
+	rm -f *.o dialserver dialserver_with_ASAN *.so
 	make -C tests clean

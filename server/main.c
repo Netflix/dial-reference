@@ -112,19 +112,19 @@ int isAppRunning( char *pzName, char *pzCommandPattern ) {
     struct dirent* procEntry;
     while((procEntry=readdir(proc_fd)) != NULL) {
       if( doesMatch( "^[0-9][0-9]*$", procEntry->d_name ) ) {
-        char exePath[64] = {0,};
+        char exePath[384] = {0,};
         char link[256] = {0,};
-        char cmdlinePath[64] = {0,};
+        char cmdlinePath[384] = {0,};
         char buffer[1024] = {0,};
         int len;
-        sprintf( exePath, "/proc/%s/exe", procEntry->d_name);
-        sprintf( cmdlinePath, "/proc/%s/cmdline", procEntry->d_name);
+        snprintf( exePath, sizeof(exePath), "/proc/%s/exe", procEntry->d_name);
+        snprintf( cmdlinePath, sizeof(cmdlinePath), "/proc/%s/cmdline", procEntry->d_name);
 
         if( (len = readlink( exePath, link, sizeof(link)-1)) != -1 ) {
           char executable[256] = {0,};
-          strcat( executable, pzName );
+          strncpy( executable, pzName, sizeof(executable) - 2 );
           strcat( executable, "$" );
-          // TODO: Make this search for EOL to prevent false positivies
+          // TODO: Make this search for EOL to prevent false positives
           if( !doesMatch( executable, link ) ) {
             continue;
           }
@@ -147,9 +147,9 @@ int isAppRunning( char *pzName, char *pzCommandPattern ) {
             continue;
           }
         }
-
+        int d_name = atoi(procEntry->d_name);
         closedir(proc_fd);
-        return atoi(procEntry->d_name);
+        return d_name;
       }
     }
 
@@ -202,14 +202,14 @@ static DIALStatus youtube_start(DIALServer *ds, const char *appname,
     printf("\n\n ** LAUNCH YouTube ** with payload %s\n\n", payload);
 
     char url[512] = {0,}, data[512] = {0,};
-    if (strlen(payload) && strlen(additionalDataUrl)){
-        sprintf( url, "https://www.youtube.com/tv?%s&%s", payload, additionalDataUrl);
-    }else if (strlen(payload)){
-        sprintf( url, "https://www.youtube.com/tv?%s", payload);
-    }else{
-        sprintf( url, "https://www.youtube.com/tv");
+    if (strlen(payload) && strlen(additionalDataUrl)) {
+        snprintf( url, sizeof(url), "https://www.youtube.com/tv?%s&%s", payload, additionalDataUrl);
+    } else if (strlen(payload)) {
+        snprintf( url, sizeof(url), "https://www.youtube.com/tv?%s", payload);
+    } else {
+      snprintf( url, sizeof(url), "https://www.youtube.com/tv");
     }
-    sprintf( data, "--user-data-dir=%s/.config/google-chrome-dial", getenv("HOME") );
+    snprintf( data, sizeof(data), "--user-data-dir=%s/.config/google-chrome-dial", getenv("HOME") );
 
     const char * const youtube_args[] = { spAppYouTubeExecutable,
       spYouTubePS3UserAgent,
@@ -268,13 +268,18 @@ static void setValue( char * pSource, char dest[] )
 static void setDataDir(char *pData)
 {
     setValue( spNfDataDir, spDataDir );
-    strcat(spDataDir, pData);
+    strncat(spDataDir, pData, sizeof(spDataDir) - 1);
 }
 
 void runDial(void)
 {
     DIALServer *ds;
     ds = DIAL_create();
+    if (ds == NULL) {
+        printf("Unable to create DIAL server.\n");
+        return;
+    }
+    
     struct DIALAppCallbacks cb_nf;
     cb_nf.start_cb = netflix_start;
     cb_nf.hide_cb = netflix_hide;
@@ -283,16 +288,20 @@ void runDial(void)
     struct DIALAppCallbacks cb_yt = {youtube_start, youtube_hide, youtube_stop, youtube_status};
     struct DIALAppCallbacks cb_system = {system_start, system_hide, NULL, system_status};
 
-    DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, ".netflix.com");
-    DIAL_register_app(ds, "YouTube", &cb_yt, NULL, 1, ".youtube.com");
-    DIAL_register_app(ds, "system", &cb_system, NULL, 1, "");
-    DIAL_start(ds);
-
-    gDialPort = DIAL_get_port(ds);
-    printf("launcher listening on gDialPort %d\n", gDialPort);
-    run_ssdp(gDialPort, spFriendlyName, spModelName, spUuid);
-
-    DIAL_stop(ds);
+    if (DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, ".netflix.com") == -1 ||
+        DIAL_register_app(ds, "YouTube", &cb_yt, NULL, 1, ".youtube.com") == -1 ||
+        DIAL_register_app(ds, "system", &cb_system, NULL, 1, "") == -1)
+    {
+        printf("Unable to register DIAL applications.\n");
+    } else if (!DIAL_start(ds)) {
+        printf("Unable to start DIAL master listening thread.\n");
+    } else {
+        gDialPort = DIAL_get_port(ds);
+        printf("launcher listening on gDialPort %d\n", gDialPort);
+        run_ssdp(gDialPort, spFriendlyName, spModelName, spUuid);
+        
+        DIAL_stop(ds);
+    }
     free(ds);
 }
 
@@ -317,11 +326,11 @@ static void processOption( int index, char * pOption )
         setValue( pOption, spUuid );
         break;
     case 5:
-        if (strcmp(pOption, "on")==0){
+        if (strcmp(pOption, "on")==0) {
             wakeOnWifiLan=true;
-        }else if (strcmp(pOption, "off")==0){
+        } else if (strcmp(pOption, "off") == 0) {
             wakeOnWifiLan=false;
-        }else{
+        } else {
             fprintf(stderr, "Option %s is not valid for %s",
                     pOption, WAKE_OPTION_LONG);
             exit(1);
