@@ -7,8 +7,8 @@
 
 **DI**scovery **A**nd **L**aunch—is a simple protocol that second-screen devices can use to discover and launch apps on first-screen devices. 
 
-[DIAL page](http://www.dial-multiscreen.org/) |
-[DIAL protocol spec](http://www.dial-multiscreen.org/dial-protocol-specification)
+[DIAL page](https://sites.google.com/a/dial-multiscreen.org/dial/) |
+[DIAL protocol spec](https://sites.google.com/a/dial-multiscreen.org/dial/dial-protocol-specification)
 
 
 
