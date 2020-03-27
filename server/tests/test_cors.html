@@ -17,7 +17,7 @@ and open the template in the editor.
               console.log("make dial post...");
               var ip = $("#ipAddress").val();
               var port = $("#dialPort").val();
-              var urlStr = "http://"+ip+":"+port+"/apps/"+app;
+              var urlStr = "https://"+ip+":"+port+"/apps/"+app;
               console.log(urlStr);
               $("#status").text("posted to "+urlStr);
               $.ajax({

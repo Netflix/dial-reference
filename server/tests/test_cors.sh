@@ -9,7 +9,7 @@ ip_address=$1
 port=$2
 
 #Testing all the positive cases
-origins="http://www4.netflix.com http://1.netflix.com https://www.netflix.com https://www4.netflix.com ftp://this.is.fine"
+origins="https://www.netflix.com https://netflix.com https://port.netflix.com:123 https://www.netflix.com:80 https://www.netflix.com:123"
 for origin in $origins; do
 curl --fail --silent --header "Origin:$origin" --data "v=QH2-TGUlwu4"  http://$ip_address:$port/apps/Netflix || echo "failed: $origin should be accepted"
 curl --fail --silent --header "Origin:$origin" -X OPTIONS  http://$ip_address:$port/apps/Netflix || echo "failed: $origin should be accepted"
@@ -21,7 +21,7 @@ then
 fi
 done
 
-origins="http://www4.youtube.com http://1.youtube.com https://www.youtube.com https://www4.youtube.com ftp://this.is.fine"
+origins="https://www.youtube.com https://youtube.com https://port.youtube.com:123 https://www.youtube.com:80 https://www.youtube.com:123"
 for origin in $origins; do
 curl --fail --silent --header "Origin:$origin" --data "v=QH2-TGUlwu4"  http://$ip_address:$port/apps/YouTube || echo "failed: $origin should be accepted"
 curl --fail --silent --header "Origin:$origin" -X OPTIONS  http://$ip_address:$port/apps/YouTube || echo "failed: $origin should be accepted"
@@ -34,7 +34,7 @@ fi
 done
 
 #Testing all the negative cases
-origins="http://www.netflix-a.com http://www.netflix.com4 http://a-netflix.com https://ww.netflix-a.com https://www.netflix.com4 https://a-netflix.com http://netflix.com http://www.attack.com https://www.attack.com file://www.attack.com"
+origins="http://www.netflix-a.com http://www.netflix.com4 http://a-netflix.com http://www4.netflix.com https://port.netflix.com:1234 http://1.netflix.com https://www4.netflix.com https://ww.netflix-a.com https://www.netflix.com4 https://a-netflix.com http://netflix.com http://www.attack.com https://www.attack.com file://www.attack.com ftp://this.is.not.fine"
 for origin in $origins; do
 curl --fail --silent --header "Origin:$origin" --data "v=QH2-TGUlwu4"  http://$ip_address:$port/apps/Netflix && echo "failed: $origin should be rejected"
 curl --fail --silent --header "Origin:$origin" -X OPTIONS  http://$ip_address:$port/apps/Netflix && echo "failed: $origin should be rejected"
@@ -46,7 +46,7 @@ then
 fi
 done
 
-origins="http://www.youtube-a.com http://www.youtube.com4 http://a-youtube.com https://ww.youtube-a.com https://www.youtube.com4 https://a-youtube.com http://youtube.com https://youtube.com http://www.attack.com https://www.attack.com file://www.attack.com"
+origins="http://www.youtube-a.com http://www.youtube.com4 http://a-youtube.com https://ww.youtube-a.com http://www4.youtube.com https://port.youtube.com:1234 http://1.youtube.com https://www4.youtube.com https://www.youtube.com4 https://a-youtube.com http://youtube.com http://www.attack.com https://www.attack.com file://www.attack.com ftp://this.is.not.fine"
 for origin in $origins; do
 curl --fail --silent --header "Origin:$origin" --data "v=QH2-TGUlwu4"  http://$ip_address:$port/apps/YouTube && echo "failed: $origin should be rejected"
 curl --fail --silent --header "Origin:$origin" -X OPTIONS  http://$ip_address:$port/apps/YouTube && echo "failed: $origin should be rejected"
