@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 Netflix, Inc.
+ * Copyright (c) 2014-2020 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,7 +42,8 @@
 #define DIAL_PORT (56789)
 #define DIAL_DATA_SIZE (8*1024)
 
-static const char *gLocalhost = "127.0.0.1";
+static const char * const gLocalhost = "127.0.0.1";
+static const char * const gHttpsProto = "https://";
 
 struct DIALApp_ {
     struct DIALApp_ *next;
@@ -492,10 +493,19 @@ static void handle_dial_data(struct mg_connection *conn,
 }
 
 
-static int host_matches(const char *origin_host, const char *host) {
-    if (!origin_host || !host)
+static int host_matches(const char *origin_host, const char *candidate) {
+    // Make sure there is something to compare.
+    if (!origin_host || !candidate)
         return 0;
-        
+    
+    // Make sure the candidate also begins with HTTPS.
+    if (strncmp(candidate, gHttpsProto, strlen(gHttpsProto)) != 0)
+        return 0;
+    
+    // For the rest of the check, we only care about the hostname and optional
+    // port number.
+    const char *host = candidate + strlen(gHttpsProto);
+    
     // If the host contains a port number (indicated by a colon) require an
     // exact match.
     const char * origin_colon = strrchr(origin_host, ':');
@@ -505,87 +515,98 @@ static int host_matches(const char *origin_host, const char *host) {
         // does not have any port number under the assumption we already
         // verified https://
         if (strlen(host_colon) == 4 &&
-	    strncmp(host_colon, ":443", 4) == 0 &&
-	    origin_colon == NULL)
-	{
-	    // Strip off the host port number and require an exact match.
-  	    size_t host_len = host_colon - host;
-	    if (host_len == 0)
-   	        return 0;
-	    return strncmp(origin_host, host, host_len) == 0;
+            strncmp(host_colon, ":443", 4) == 0 &&
+            origin_colon == NULL)
+        {
+            // Strip off the host port number and require an exact match.
+            size_t host_len = host_colon - host;
+            if (host_len == 0)
+                return 0;
+            return strncmp(origin_host, host, host_len) == 0;
         }
         
         // Other port numbers must match exactly.
-    	if (strlen(origin_host) != strlen(host))
-    	    return 0;
-    	return strncmp(origin_host, host, strlen(host)) == 0;
+        if (strlen(origin_host) != strlen(host))
+            return 0;
+        return strncmp(origin_host, host, strlen(host)) == 0;
     }
     
     // Otherwise strip off any port number in the origin host, and require an
     // exact match.
     size_t origin_len = (origin_colon == NULL) ? strlen(origin_host) : origin_colon - origin_host;
     if (origin_len == 0)
-	return 0;
+        return 0;
     if (origin_len != strlen(host))
-	return 0;
+        return 0;
     return strncmp(origin_host, host, origin_len) == 0;
 }
 
-// str contains a white space separated list of strings (only supports SPACE characters for now)
-static int is_hostname_in_list(const char *origin_host, const char *list) {
-    if (!origin_host || !list)
+static int origin_matches(const char *origin, const char *candidate) {
+    // Make sure there is something to compare.
+    if (!origin || !candidate)
         return 0;
+    
+    // Require an exact match.
+    size_t origin_len = strlen(origin);
+    return (origin_len == strlen(candidate) &&
+        strncmp(origin, candidate, origin_len) == 0);
+}
+
+// str contains a white space separated list of strings (only supports SPACE characters for now)
+static int is_uri_in_list(const char *origin, const char *list) {
+    // Make sure there is something to compare.
+    if (!origin || !list)
+        return 0;
+
+    int isHttps = (strncmp(origin, gHttpsProto, strlen(gHttpsProto)) == 0);
+    const char * origin_host = (isHttps) ? origin + strlen(gHttpsProto) : NULL;
     
     const char * scanPointer = list;
     const char * spacePointer;
     unsigned int substringSize = 257;
-    char *host = (char *)malloc(substringSize);
-    if (!host) {
+    char *candidate = (char *)malloc(substringSize);
+    if (!candidate) {
         return 0;
     }
     while ((spacePointer = strchr(scanPointer, ' ')) != NULL) {
-    	int copyLength = spacePointer - scanPointer;      
+        int copyLength = spacePointer - scanPointer;      
       
-      	// protect against buffer overflow
-      	if (copyLength >= substringSize){
-          	substringSize = copyLength + 1;
-	        free(host);
-    	    host = (char *)malloc(substringSize);
-          	if (!host) {
-            	return 0;
-          	}
-      	}
+        // protect against buffer overflow
+        if (copyLength >= substringSize) {
+            substringSize = copyLength + 1;
+            free(candidate);
+            candidate = (char *)malloc(substringSize);
+            if (!candidate) {
+                return 0;
+            }
+        }
 
-    	memcpy(host, scanPointer, copyLength);
-    	host[copyLength] = '\0';
-    	//printf("found %s \n", host);
-    	if (host_matches(origin_host, host)) {
-          free(host); host = NULL;
-          return 1;
-    	}
-    	scanPointer = scanPointer + copyLength + 1; // assumption: only 1 character
+        memcpy(candidate, scanPointer, copyLength);
+        candidate[copyLength] = '\0';
+        //printf("found %s \n", candidate);
+        // If the URI begins with https://, perform a host comparison because
+        // any port numbers must be handled specially. Otherwise require an
+        // exact match.
+        if ((isHttps && host_matches(origin_host, candidate)) ||
+            (!isHttps && origin_matches(origin, candidate)))
+        {
+            free(candidate); candidate = NULL;
+            return 1;
+        }
+        scanPointer = scanPointer + copyLength + 1; // assumption: only 1 character
     }
-    free(host); host = NULL;
-    return host_matches(origin_host, scanPointer);
+    free(candidate); candidate = NULL;
+    return ((isHttps && host_matches(origin_host, scanPointer)) ||
+            (!isHttps && origin_matches(origin, scanPointer)));
 }
 
 static int is_allowed_origin(DIALServer* ds, char * origin, const char * app_name) {
-    const char * const HTTPS_PROTO = "https://";
     fprintf(stderr, "checking %s for %s\n", origin, app_name);
 
     if (!origin || strlen(origin)==0) {
         return 1;
     }
     
-    // Make sure the origin begins with HTTPS.
-    if (strncmp(origin, HTTPS_PROTO, strlen(HTTPS_PROTO)) != 0) {
-    	return 0;
-    }
-    
-    // For the rest of the check, we only care about the hostname and optional
-    // port number.
-    const char *origin_host = origin + strlen(HTTPS_PROTO);
-
     if (!ds_lock(ds)) {
         // If we can't check, fail in favor of safety.
         return 0;
@@ -593,9 +614,9 @@ static int is_allowed_origin(DIALServer* ds, char * origin, const char * app_nam
     DIALApp *app;
     int result = 0;
     for (app = ds->apps; app != NULL; app = app->next) {
-    	if (!strcmp(app->name, app_name)) {
+        if (!strcmp(app->name, app_name)) {
             if (!app->corsAllowedOrigin[0] ||
-                is_hostname_in_list(origin_host, app->corsAllowedOrigin)) {
+                is_uri_in_list(origin, app->corsAllowedOrigin)) {
                 result = 1;
                 break;
             }
@@ -829,6 +850,8 @@ int DIAL_register_app(DIALServer *ds, const char *app_name,
         app->corsAllowedOrigin[0] = '\0';
         if (corsAllowedOrigin && strlen(corsAllowedOrigin) < sizeof(app->corsAllowedOrigin)) {
             strcpy(app->corsAllowedOrigin, corsAllowedOrigin);
+        } else {
+            return -1;
         }
         *ptr = app;
         ds_unlock(ds);

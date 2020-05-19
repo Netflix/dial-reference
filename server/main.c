@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 Netflix, Inc.
+ * Copyright (c) 2014-2020 Netflix, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -288,8 +288,8 @@ void runDial(void)
     struct DIALAppCallbacks cb_yt = {youtube_start, youtube_hide, youtube_stop, youtube_status};
     struct DIALAppCallbacks cb_system = {system_start, system_hide, NULL, system_status};
 
-    if (DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, "netflix.com www.netflix.com port.netflix.com:123") == -1 ||
-        DIAL_register_app(ds, "YouTube", &cb_yt, NULL, 1, "youtube.com www.youtube.com port.youtube.com:123") == -1 ||
+    if (DIAL_register_app(ds, "Netflix", &cb_nf, NULL, 1, "https://netflix.com https://www.netflix.com https://port.netflix.com:123") == -1 ||
+        DIAL_register_app(ds, "YouTube", &cb_yt, NULL, 1, "https://youtube.com https://www.youtube.com https://port.youtube.com:123 package:com.google.android.youtube package:com.google.ios.youtube") == -1 ||
         DIAL_register_app(ds, "system", &cb_system, NULL, 1, "") == -1)
     {
         printf("Unable to register DIAL applications.\n");
