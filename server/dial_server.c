@@ -492,24 +492,47 @@ static void handle_dial_data(struct mg_connection *conn,
     ds_unlock(ds);
 }
 
-
-static int host_matches(const char *origin_host, const char *candidate) {
+/**
+ * Returns true if the origin is acceptable based on the candidate value.
+ * The candidate may accept any subdomain if its domain begins with *. and
+ * may require an exact port number match if it includes a colon to
+ * indicate a port number.
+ *
+ * This function assumes that the candidate value is well-formed, meaning
+ * it will not include invalid characters or a non-numeric port number.
+ * 
+ * @param origin the origin header value, which must begin with https://
+ * @param candidate the accepted origin whitelist value, which must begin
+ *        with https://
+ * @return true if accepted and false if not.
+ */
+static int host_matches(const char *origin, const char *candidate) {
     // Make sure there is something to compare.
-    if (!origin_host || !candidate)
+    if (!origin || !candidate)
         return 0;
     
-    // Make sure the candidate also begins with HTTPS.
-    if (strncmp(candidate, gHttpsProto, strlen(gHttpsProto)) != 0)
+    // Make sure the origin and candidate both begin with HTTPS.
+    const size_t https_len= strlen(gHttpsProto);
+    if (strncmp(origin, gHttpsProto, https_len) != 0 ||
+        strncmp(candidate, gHttpsProto, https_len) != 0)
+    {
         return 0;
+    }
     
     // For the rest of the check, we only care about the hostname and optional
     // port number.
-    const char *host = candidate + strlen(gHttpsProto);
-    
-    // If the host contains a port number (indicated by a colon) require an
-    // exact match.
+    const char * origin_host = origin + https_len;
+    const char * host = candidate + https_len;
+
+    // Set the initial lengths for comparison.
+    size_t origin_len = strlen(origin_host);
+    size_t host_len = strlen(host);
+
+    // Look for port numbers.
     const char * origin_colon = strrchr(origin_host, ':');
     const char * host_colon = strrchr(host, ':');
+
+    // If the host contains a port number (indicated by a colon)...
     if (host_colon != NULL) {
         // If the host port number is 443, then accept the origin host if it
         // does not have any port number under the assumption we already
@@ -518,27 +541,59 @@ static int host_matches(const char *origin_host, const char *candidate) {
             strncmp(host_colon, ":443", 4) == 0 &&
             origin_colon == NULL)
         {
-            // Strip off the host port number and require an exact match.
-            size_t host_len = host_colon - host;
-            if (host_len == 0)
-                return 0;
-            return strncmp(origin_host, host, host_len) == 0;
+            // We will ignore the host port number of 443.
+            host_len = host_colon - host;
         }
-        
-        // Other port numbers must match exactly.
-        if (strlen(origin_host) != strlen(host))
-            return 0;
-        return strncmp(origin_host, host, strlen(host)) == 0;
+
+        // Other port numbers must match exactly. So leave the host length
+        // untouched.
     }
-    
-    // Otherwise strip off any port number in the origin host, and require an
-    // exact match.
-    size_t origin_len = (origin_colon == NULL) ? strlen(origin_host) : origin_colon - origin_host;
-    if (origin_len == 0)
+
+    // Otherwise ignore any port number in the origin.
+    else if (origin_colon != NULL) {
+       origin_len = origin_colon - origin_host;
+    }
+
+    // At this point, the origin length excludes any port number if the host
+    // does not specify one, and the host length excludes its port number if
+    // it was 443 and there is no origin port number.
+    //
+    // If either length is zero then fail.
+    if (origin_len == 0 || host_len == 0)
         return 0;
-    if (origin_len != strlen(host))
-        return 0;
-    return strncmp(origin_host, host, origin_len) == 0;
+
+    // Check to see if the host permits subdomains.
+    const char * wildcard = "*.";
+    const int acceptSubdomain = (host_len > strlen(wildcard))
+        ? strncmp(host, wildcard, strlen(wildcard)) == 0
+        : 0;
+
+    // If the host accepts subdomains, verify that the origin ends with the
+    // portion of the host that occurs after the subdomain wildcard.
+    if (acceptSubdomain) {
+        // The origin must be at least as long as the host.
+        if (origin_len < host_len)
+            return 0;
+
+        // Skip the subdomain of the origin, which should equate to the
+        // wildcard of the host. Likewise skip the wildcard of the host.
+        const char * origin_domain = strchr(origin_host, '.');
+        const char * host_domain = host + 1;
+        if (!origin_domain || !host_domain)
+            return 0;
+
+        // Remove from comparison the characters we skipped.
+        origin_len -= (origin_domain - origin_host);
+        host_len -= 1;
+
+        // The remainder must be an exact match.
+        return (origin_len == host_len &&
+                strncmp(origin_domain, host_domain, origin_len) == 0);
+    }
+
+    // Otherwise the host and origin must be an exact match.
+    return (origin_len == host_len &&
+            strncmp(origin_host, host, origin_len) == 0);
 }
 
 static int origin_matches(const char *origin, const char *candidate) {
@@ -559,7 +614,6 @@ static int is_uri_in_list(const char *origin, const char *list) {
         return 0;
 
     int isHttps = (strncmp(origin, gHttpsProto, strlen(gHttpsProto)) == 0);
-    const char * origin_host = (isHttps) ? origin + strlen(gHttpsProto) : NULL;
     
     const char * scanPointer = list;
     const char * spacePointer;
@@ -587,7 +641,7 @@ static int is_uri_in_list(const char *origin, const char *list) {
         // If the URI begins with https://, perform a host comparison because
         // any port numbers must be handled specially. Otherwise require an
         // exact match.
-        if ((isHttps && host_matches(origin_host, candidate)) ||
+        if ((isHttps && host_matches(origin, candidate)) ||
             (!isHttps && origin_matches(origin, candidate)))
         {
             free(candidate); candidate = NULL;
@@ -596,7 +650,7 @@ static int is_uri_in_list(const char *origin, const char *list) {
         scanPointer = scanPointer + copyLength + 1; // assumption: only 1 character
     }
     free(candidate); candidate = NULL;
-    return ((isHttps && host_matches(origin_host, scanPointer)) ||
+    return ((isHttps && host_matches(origin, scanPointer)) ||
             (!isHttps && origin_matches(origin, scanPointer)));
 }
 

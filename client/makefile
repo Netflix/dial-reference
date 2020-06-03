@@ -6,6 +6,8 @@ CC=$(TARGET)g++
 includes = $(wildcard *.h)
 OBJS := main.cpp DialServer.cpp DialDiscovery.cpp DialConformance.cpp DialClientInput.cpp
 
+debug: dialclient_debug
+
 # You may not need all these libraries.  This example uses a build of curl that needs crypto, ssl, cares, and zlib
 dialclient: $(OBJS) ${includes}
 	$(CC) -Wall -Werror -g $(OBJS) $(INCLUDES) $(LDFLAGS) -ldl -lpthread -lcurl -lz -lcrypto -lssl -o dialclient
