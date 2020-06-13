@@ -502,8 +502,8 @@ static void handle_dial_data(struct mg_connection *conn,
  * it will not include invalid characters or a non-numeric port number.
  * 
  * @param origin the origin header value, which must begin with https://
- * @param candidate the accepted origin whitelist value, which must begin
- *        with https://
+ * @param candidate the authorized origin value, which must begin with
+ *        https://
  * @return true if accepted and false if not.
  */
 static int host_matches(const char *origin, const char *candidate) {
@@ -596,13 +596,40 @@ static int host_matches(const char *origin, const char *candidate) {
             strncmp(origin_host, host, origin_len) == 0);
 }
 
+/**
+ * Returns true if the origin is acceptable based on the candidate value.
+ * The origin must be an exact match to the candidate, unless the
+ * candidate is of the form 'scheme://*' or 'scheme:*' in which case
+ * everything before the wildcard '*' character must be an exact match but
+ * anything is accepted in place of the wildcard.
+ *
+ * This function assumes that the candidate value is well-formed, meaning
+ * it will not include invalid chracters and it will be a valid URI.
+ *
+ * @param origin the origin header value.
+ * @param candidate the authorized origin value.
+ * @return true if accepted and false if not.
+ */
 static int origin_matches(const char *origin, const char *candidate) {
     // Make sure there is something to compare.
     if (!origin || !candidate)
         return 0;
-    
-    // Require an exact match.
+
+    // If the candidate consists of a scheme followed by wildcard,
+    // require an exact match of the scheme specifier.
     size_t origin_len = strlen(origin);
+    size_t candidate_len = strlen(candidate);
+    if (candidate_len > 1 && candidate[candidate_len - 1] == '*') {
+        // The origin must be at least as long as the candidate for a
+        // wildcard match to succeed.
+        if (origin_len < candidate_len)
+            return 0;
+
+        fprintf(stderr, "comparing %s to %s len %lld\n", origin, candidate, candidate_len);
+        return strncmp(origin, candidate, candidate_len - 1) == 0;
+    }
+
+    // Require an exact match.
     return (origin_len == strlen(candidate) &&
         strncmp(origin, candidate, origin_len) == 0);
 }
@@ -639,8 +666,8 @@ static int is_uri_in_list(const char *origin, const char *list) {
         candidate[copyLength] = '\0';
         //printf("found %s \n", candidate);
         // If the URI begins with https://, perform a host comparison because
-        // any port numbers must be handled specially. Otherwise require an
-        // exact match.
+        // any port numbers must be handled specially. Otherwise perform a
+        // regular match.
         if ((isHttps && host_matches(origin, candidate)) ||
             (!isHttps && origin_matches(origin, candidate)))
         {

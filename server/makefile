@@ -13,7 +13,8 @@ HEADERS := $(wildcard *.h)
 	$(CC) -Wall -g -fPIC -std=gnu99 $(CFLAGS) -c $*.c -o $*.o
 
 all: dialserver
-debug: dialserver_debug test
+debug: CFLAGS += -DDEBUG
+debug: dialserver test
 
 nf_callbacks_lib: nf_callbacks.o
 #	$(CC) -Wall -Werror -g nf_callbacks.o -o libnfCallbacks.so --shared
@@ -21,9 +22,6 @@ nf_callbacks_lib: nf_callbacks.o
 
 dialserver: nf_callbacks_lib $(OBJS)
 	$(CC) -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver
-
-dialserver_debug: nf_callbacks_lib $(OBJS)
-	$(CC) -DDEBUG -Wall -Werror -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver
 
 dialserver_with_ASAN: nf_callbacks_lib $(OBJS)
 	$(CC) -Wall -Werror  -fsanitize=address -Wl,-rpath,. -g $(OBJS) -ldl -lpthread -lrt -L. -lnfCallbacks -o dialserver_with_ASAN
