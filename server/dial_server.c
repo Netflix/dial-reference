@@ -625,7 +625,7 @@ static int origin_matches(const char *origin, const char *candidate) {
         if (origin_len < candidate_len)
             return 0;
 
-        fprintf(stderr, "comparing %s to %s len %lld\n", origin, candidate, candidate_len);
+        fprintf(stderr, "comparing %s to %s len %zu\n", origin, candidate, candidate_len);
         return strncmp(origin, candidate, candidate_len - 1) == 0;
     }
 
@@ -712,23 +712,19 @@ static int is_allowed_origin(DIALServer* ds, char * origin, const char * app_nam
 #define RUN_URI "/run"
 #define HIDE_URI "/hide"
 
-static void *options_response(DIALServer *ds, struct mg_connection *conn, char *host_header, char *origin_header, const char* app_name, const char* methods)
+static void *options_response(DIALServer *ds, struct mg_connection *conn, char *origin_header, const char* app_name, const char* methods)
 {    
-    if (host_header && is_allowed_origin(ds, origin_header, app_name)) {
-        mg_printf(
-                  conn,
-                  "HTTP/1.1 204 No Content\r\n"
-                  "Access-Control-Allow-Methods: %s\r\n"
-                  "Access-Control-Max-Age: 86400\r\n"
-                  "Access-Control-Allow-Origin: %s\r\n"
-                  "Content-Length: 0"
-                  "\r\n",
-                  methods,
-                  origin_header);
-        return "done";
-    }
-    mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
-    return "done";   
+    mg_printf(
+              conn,
+              "HTTP/1.1 204 No Content\r\n"
+              "Access-Control-Allow-Methods: %s\r\n"
+              "Access-Control-Max-Age: 86400\r\n"
+              "Access-Control-Allow-Origin: %s\r\n"
+              "Content-Length: 0"
+              "\r\n",
+              methods,
+              origin_header);
+    return "done";
 }
 
 static void *request_handler(enum mg_event event, struct mg_connection *conn,
@@ -761,20 +757,22 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
             }
             strncpy(app_name, request_info->uri + strlen(APPS_URI), appname_len);
 
+            // Check authorized origins.
+            if (origin_header && !is_allowed_origin(ds, origin_header, app_name)) {
+                mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
+                return "done";
+            }
+
+            // Return OPTIONS.
             if (!strcmp(request_info->request_method, "OPTIONS")) {
-                return options_response(ds, conn, host_header, origin_header, app_name, "DELETE, OPTIONS");
+                return options_response(ds, conn, origin_header, app_name, "DELETE, OPTIONS");
             }
 
             // DELETE non-empty app name
             if (app_name[0] != '\0'
                 && !strcmp(request_info->request_method, "DELETE"))
             {
-                if (host_header && is_allowed_origin(ds, origin_header, app_name)) {
-                    handle_app_stop(conn, request_info, app_name, origin_header);
-                } else {
-                    mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
-                    return "done";
-                }
+                handle_app_stop(conn, request_info, app_name, origin_header);
             } else {
                 mg_send_http_error(conn, 501, "Not Implemented",
                                    "Not Implemented");
@@ -788,18 +786,20 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
             const char *app_name;
             app_name = request_info->uri + strlen(APPS_URI);
 
+            // Check authorized origins.
+            if (origin_header && !is_allowed_origin(ds, origin_header, app_name)) {
+                mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
+                return "done";
+            }
+
+            // Return OPTIONS.
             if (!strcmp(request_info->request_method, "OPTIONS")) {
-                return options_response(ds, conn, host_header, origin_header, app_name, "GET, POST, OPTIONS");
+                return options_response(ds, conn, origin_header, app_name, "GET, POST, OPTIONS");
             }
 
             // start app
             if (!strcmp(request_info->request_method, "POST")) {
-                if (host_header && is_allowed_origin(ds, origin_header, app_name)) {
-                    handle_app_start(conn, request_info, app_name, origin_header);
-                } else {
-                    mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
-                    return "done";
-                }
+                handle_app_start(conn, request_info, app_name, origin_header);
             // get app status
             } else if (!strcmp(request_info->request_method, "GET")) {
                 handle_app_status(conn, request_info, app_name, origin_header);
@@ -819,10 +819,18 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
             }
             strncpy(app_name, request_info->uri + strlen(APPS_URI), appname_len);
 
-            if (!strcmp(request_info->request_method, "OPTIONS")) {
-                return options_response(ds, conn, host_header, origin_header, app_name, "POST, OPTIONS");
+            // Check authorized origins.
+            if (origin_header && !is_allowed_origin(ds, origin_header, app_name)) {
+                mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
+                return "done";
             }
-            
+
+            // Return OPTIONS.
+            if (!strcmp(request_info->request_method, "OPTIONS")) {
+                return options_response(ds, conn, origin_header, app_name, "POST, OPTIONS");
+            }
+
+            // hide app
             if (app_name[0] != '\0' && !strcmp(request_info->request_method, "POST")) {
                 handle_app_hide(conn, request_info, app_name, origin_header);
             } else {
@@ -840,11 +848,20 @@ static void *request_handler(enum mg_event event, struct mg_connection *conn,
                 if (app_name == NULL) {
                     mg_send_http_error(conn, 500, "Internal Error", "Internal Error");
                 } else {
+                    // Check authorized origins (still applicable via loopback).
+                    if (origin_header && !is_allowed_origin(ds, origin_header, app_name)) {
+                        mg_send_http_error(conn, 403, "Forbidden", "Forbidden");
+                        return "done";
+                    }
+
+                    // Return OPTIONS.
                     if (!strcmp(request_info->request_method, "OPTIONS")) {
-                        void *ret = options_response(ds, conn, host_header, origin_header, app_name, "POST, OPTIONS");
+                        void *ret = options_response(ds, conn, origin_header, app_name, "POST, OPTIONS");
                         free(app_name);
                         return ret;
                     }
+
+                    // deliver data payload
                     int use_payload = strcmp(request_info->request_method, "POST") ? 0 : 1;
                     handle_dial_data(conn, request_info, app_name, origin_header,
                                      use_payload);
