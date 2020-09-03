@@ -256,6 +256,8 @@ void *DialDiscovery::receiveResponses(void *p)
     time_t start=std::time(NULL);
     while (std::time(NULL)-start<RESPONSE_TIMEOUT) {
         //        printf("beat %ld %ld %ld\n", std::time(NULL), start, std::time(NULL)-start);
+        tv.tv_sec = 1;
+        tv.tv_usec = 500000;
         FD_ZERO(&readfds);
         FD_SET(pConn->sock, &readfds);
 
