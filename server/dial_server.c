@@ -949,6 +949,7 @@ int DIAL_register_app(DIALServer *ds, const char *app_name,
         if (corsAllowedOrigin && strlen(corsAllowedOrigin) < sizeof(app->corsAllowedOrigin)) {
             strcpy(app->corsAllowedOrigin, corsAllowedOrigin);
         } else {
+            ds_unlock(ds);
             return -1;
         }
         *ptr = app;
