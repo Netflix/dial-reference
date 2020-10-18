@@ -141,7 +141,7 @@ static size_t header_cb(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
     if ((size * nmemb) != 0) {
         string parse((char*)ptr);
-        if( parse.find("Application-URL: ") != string::npos ) {
+        if( parse.find("Application-URL:") != string::npos ) {
             size_t index_start = parse.find(":");
             index_start += 2;
             size_t index_end = parse.find("\r\n");
