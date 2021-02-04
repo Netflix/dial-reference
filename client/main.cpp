@@ -79,7 +79,7 @@ static DialServer* getServerFromUser( vector<DialServer*> list )
     printf("0: Rescan and list DIAL servers\n");
     printServerList(list);
     printf("Enter server: ");
-    scanf("%s", buf);
+    fgets(buf, 80, stdin);
     unsigned int server = atoi(buf);
     if( server > 0 && server <= list.size()){
         pServer = list[server-1];
@@ -233,7 +233,7 @@ int handleUser(DialDiscovery *pDial) {
             printf("10. Wake up on lan/wlan\n");
             printf("11. QUIT\n");
             printf("Command (0:1:2:3:4:5:6:7:8:9:10:11): ");
-            scanf("%s", buf);
+            fgets(buf, 80, stdin);
             switch( atoi(buf) )
                 {
                 case 0:
@@ -330,7 +330,10 @@ int parseArgs( int argc, char* argv[] )
             }
             break;
         case 'o':
+            if(argv[++i])
+            {
             gOutputFile = argv[++i];
+            }
             break;
         case 'a':
             gIpAddress = argv[++i];
