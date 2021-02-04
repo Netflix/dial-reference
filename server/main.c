@@ -262,7 +262,8 @@ static void setValue( char * pSource, char dest[] )
 {
     // Destination is always one of our static buffers with size BUFSIZE
     memset( dest, 0, BUFSIZE );
-    memcpy( dest, pSource, strlen(pSource) );
+    int length = (strlen(pSource) < BUFSIZE - 1) ? strlen(pSource) : (BUFSIZE - 1);
+    memcpy( dest, pSource, length );
 }
 
 static void setDataDir(char *pData)
