@@ -75,7 +75,7 @@ static const char ssdp_msearch[] =
     "M-SEARCH * HTTP/1.1\r\n"
     "HOST: 239.255.255.250:1900\r\n"
     "MAN: \"ssdp:discover\"\r\n"
-    "MX: 10\r\n"
+    "MX: 3\r\n"
     "ST: urn:dial-multiscreen-org:service:dial:1\r\n\r\n";
 
 static string getLocation(char *pResponse) 
@@ -86,7 +86,7 @@ static string getLocation(char *pResponse)
     while( index != string::npos ) {
         locUrl = loc.substr(prev, index-prev);
         ATRACE("locUrl: ##%s## prev: %d index %d\n", locUrl.c_str(), (int)prev, (int)index );
-        if( locUrl.find("LOCATION: ") != string::npos ) {
+        if( strcasestr(locUrl.c_str(), "LOCATION: ") != NULL ) {
             index = locUrl.find("\r\n");
             retUrl = locUrl.substr( 10 );
             break;
@@ -141,7 +141,7 @@ static size_t header_cb(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
     if ((size * nmemb) != 0) {
         string parse((char*)ptr);
-        if( parse.find("Application-URL: ") != string::npos ) {
+        if( parse.find("Application-URL:") != string::npos ) {
             size_t index_start = parse.find(":");
             index_start += 2;
             size_t index_end = parse.find("\r\n");
@@ -256,6 +256,11 @@ void *DialDiscovery::receiveResponses(void *p)
     time_t start=std::time(NULL);
     while (std::time(NULL)-start<RESPONSE_TIMEOUT) {
         //        printf("beat %ld %ld %ld\n", std::time(NULL), start, std::time(NULL)-start);
+        tv.tv_sec = 1;
+        tv.tv_usec = 500000;
+        FD_ZERO(&readfds);
+        FD_SET(pConn->sock, &readfds);
+
         selectRt=select(pConn->sock+1, &readfds, NULL, NULL, &tv);
         if (selectRt==-1){
             perror("select"); // error occurred in select()
