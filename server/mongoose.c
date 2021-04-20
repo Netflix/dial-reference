@@ -812,6 +812,7 @@ static void worker_thread(struct mg_context *ctx) {
   int buf_size = MAX_REQUEST_SIZE;
 
   conn = (struct mg_connection *) calloc(1, sizeof(*conn) + buf_size);
+  assert(conn != NULL);
   conn->buf_size = buf_size;
   conn->buf = (char *) (conn + 1);
   assert(conn != NULL);

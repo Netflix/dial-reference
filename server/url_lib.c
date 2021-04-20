@@ -210,6 +210,9 @@ DIALData *parse_params(char * query_string) {
     DIALData *result = NULL;
     int err = 0;
     char *query_string_dup = strdup(query_string);
+    if (query_string_dup == NULL){
+        return NULL;
+    }
     char * name_value = strtok(query_string_dup, "&");
     while (name_value != NULL) {
         DIALData *tmp = (DIALData *) malloc(sizeof(DIALData));
@@ -274,6 +277,9 @@ char *url_encode(const char *str) {
     char *buf, *pbuf;
     pstr = str;
     buf = malloc(strlen(str) * 3 + 1);
+    if (buf == NULL){
+        return NULL;
+    }
     pbuf = buf;
     if( buf )
     {
