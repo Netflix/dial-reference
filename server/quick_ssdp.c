@@ -126,6 +126,7 @@ static char * get_local_address() {
     char buf[4096];
     char * hw_addr = NULL;
     int s, i;
+    struct in_addr addr;
     if (-1 == (s = socket(AF_INET, SOCK_DGRAM, 0))) {
         perror("socket");
         exit(1);
@@ -141,28 +142,26 @@ static char * get_local_address() {
         exit(1);
     }
     for (i = 0; i < ifc.ifc_len/sizeof(ifc.ifc_req[0]); i++) {
-        strncpy(ip_addr,
-               inet_ntoa(((struct sockaddr_in *)(&ifc.ifc_req[i].ifr_addr))->sin_addr), sizeof(ip_addr) - 1);
+        addr = ((struct sockaddr_in *)(&ifc.ifc_req[i].ifr_addr))->sin_addr;
         if (0 > ioctl(s, SIOCGIFFLAGS, &ifc.ifc_req[i])) {
-            perror("SIOCGIFFLAGS");
-            exit(1);
+            continue;
         }
         if (ifc.ifc_req[i].ifr_flags & IFF_LOOPBACK) {
             // don't use loopback interfaces
             continue;
         }
-        if (0 > ioctl(s, SIOCGIFHWADDR, &ifc.ifc_req[i])) {
-            perror("SIOCGIFHWADDR");
-            exit(1);
+        if (!(ifc.ifc_req[i].ifr_flags & IFF_UP) || !(ifc.ifc_req[i].ifr_flags & IFF_RUNNING) ||
+            !(ifc.ifc_req[i].ifr_flags & IFF_MULTICAST)) {
+            // interface has to support multicast as well as to be up and running
+            continue;
         }
-        // FIXME: How do I figure out what type of interface this is in order to
-        // cast the struct sockaddr ifr_hraddr to the proper type and extract the
-        // hardware address?
-        //
-        // Make sure this is correct for the target device and platform.
+        if (0 > ioctl(s, SIOCGIFHWADDR, &ifc.ifc_req[i])) {
+            continue;
+        }
         hw_addr = (char*)malloc(HW_ADDRSTRLEN + 1);
         if (hw_addr == NULL)
             break;
+        strncpy(ip_addr, inet_ntoa(addr), sizeof(ip_addr) - 1);
         sprintf(hw_addr, "%02x:%02x:%02x:%02x:%02x:%02x",
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[0],
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[1],
@@ -170,6 +169,7 @@ static char * get_local_address() {
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[3],
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[4],
                 (unsigned char)ifc.ifc_req[i].ifr_hwaddr.sa_data[5]);
+        printf("Local interface found: Name %s IP %s MAC %s\n", ifc.ifc_req[i].ifr_name, ip_addr, hw_addr);
         break;
     }
     close(s);
