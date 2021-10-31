@@ -107,6 +107,12 @@ static void *request_handler(enum mg_event event,
     return NULL;
 }
 
+#if !defined(SIOCGIFHWADDR) && defined(__APPLE__)
+// see https://github.com/apple/darwin-xnu/blob/main/bsd/sys/sockio.h
+#define SIOCGIFHWADDR _IOWR('i', 158, struct ifreq) /* get link level addr */
+#define ifr_hwaddr ifr_addr
+#endif
+
 /**
  * Returns the local hardware address (e.g. MAC address). On macOS the "en0"
  * interface is used. On other platforms the first non-loopback interface is
